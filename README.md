@@ -1,5 +1,21 @@
 # BYTESIZED32
 Byte-sized text games for code generation tasks on virtual environments.
+BYTESIZED32-main
+├── data
+│   ├── library
+│   │   └── GameBasic.py
+│   ├── playthroughs
+│   ├── programs
+│   └── refactored_programs
+├── test_prompts
+├── test_running
+├── results
+├── scripts
+├── venv
+├── LICENSE
+├── README.md
+├── requirements.txt
+└── setup.py
 
 ## Quickstart
 Clone the repository:
