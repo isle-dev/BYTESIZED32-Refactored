@@ -1,23 +1,23 @@
 # BYTESIZED32
 Byte-sized text games for code generation tasks on virtual environments.
-‘’‘
+plaintext
 BYTESIZED32-main
 ├── data
 │   ├── library
-│   │   └── GameBasic.py
-│   ├── playthroughs
-│   ├── programs
-│   └── refactored_programs
-├── test_prompts
-├── test_running
-├── results
-├── scripts
-├── venv
-├── LICENSE
-├── README.md
-├── requirements.txt
-└── setup.py
-’‘’
+│   │   └── GameBasic.py          # Core framework for game object abstractions
+│   ├── playthroughs              # Command files for running pre-defined scenarios
+│   ├── programs                  # Original unrefactored game files
+│   └── refactored_programs       # Final refactored versions of the game files
+├── test_prompts                  # Prompt templates for testing game logic
+├── test_running                  # Scripts for automated game execution
+├── results                       # Generated experimental results and evaluation files
+├── scripts                       # Utility scripts for experiment automation
+├── venv                          # Virtual environment for dependencies
+├── LICENSE                       # Project license
+├── README.md                     # Project documentation (this file)
+├── requirements.txt              # Python dependencies
+└── setup.py                      # Project setup script
+
 ## Quickstart
 Clone the repository:
 ```bash
