@@ -1,6 +1,6 @@
 # BYTESIZED32
 Byte-sized text games for code generation tasks on virtual environments.
-'''
+```
 BYTESIZED32-main
 ├── data
 │   ├── library
@@ -17,7 +17,7 @@ BYTESIZED32-main
 ├── README.md                     # Project documentation (this file)
 ├── requirements.txt              # Python dependencies
 └── setup.py                      # Project setup script
-'''
+```
 ## Quickstart
 Clone the repository:
 ```bash
