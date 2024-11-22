@@ -1,6 +1,6 @@
 # Refactor thermometer.py
 
-# success junf
+# success
 from GameBasic import *
 
 # Liquid
