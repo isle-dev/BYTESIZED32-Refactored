@@ -1,7 +1,7 @@
 # refactor balance-scale-heaviest.py
 # Success Haonan Wang and Ziang Xiao(Oct 2024)2
 
-# Changed the main function, easy to test, he is not the final code, is different.
+# Changed the main function, easy to test, that is not the final code, is different.
 
 from GameBasic import *
 
