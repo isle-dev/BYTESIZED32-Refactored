@@ -1,6 +1,6 @@
 # refactored wash-clothes.py
 
-# success junf
+# success 
 from GameBasic import *
 
 # A washing machine, which is a device that can hold clothes. 
