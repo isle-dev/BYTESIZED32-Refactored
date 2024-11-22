@@ -1,6 +1,6 @@
 import argparse
 
-# 用于提取playthroughs命令，引用这个函数，
+
 def get_commands(file_path: str):
     commands = []
     with open(file_path, "r") as file:
@@ -15,4 +15,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     commands = get_commands(args.file_path)
-    print("Loaded commands:", commands)  # 可以用于调试，确认是否正确加载命令
+    print("Loaded commands:", commands)  
