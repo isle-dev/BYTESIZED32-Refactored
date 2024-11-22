@@ -1,6 +1,6 @@
 # refactored take-photo.py
 
-# success junf
+# success 
 from GameBasic import *
 import copy
 
