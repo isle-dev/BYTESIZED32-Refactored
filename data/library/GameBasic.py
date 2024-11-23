@@ -306,7 +306,7 @@ class Agent(Container):
 
 
 class TextGame:
-#公用的基础
+
     def __init__(self, randomSeed):
         # Random number generator, initialized with a seed passed as an argument
         self.random = random.Random(randomSeed)
@@ -387,7 +387,7 @@ class TextGame:
         return obsStr + " You put the " + obj.getReferents()[0] + " in your inventory."
 
     # Put an object in a container
-# 可以做个基础支架使用，完全可以拿出来，不用的话有也没影响。
+
     def actionPut(self, objToMove, newContainer):
         # Check that the destination container is a container
         if (newContainer.getProperty("isContainer") == False):
