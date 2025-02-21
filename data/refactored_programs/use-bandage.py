@@ -309,6 +309,6 @@ class UseBandageGame(TextGame):
 
 
 if __name__ == "__main__":
-    randomSeed = 1
+    randomSeed = 15
     game = UseBandageGame(randomSeed=randomSeed)
     main(game)
