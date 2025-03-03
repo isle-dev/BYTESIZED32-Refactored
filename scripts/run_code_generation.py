@@ -62,10 +62,15 @@ def main():
             # 'DeveloperGPT' prompt from @skirano
             prompt = "You are DeveloperGPT, the most advanced AI developer tool on the planet.  You answer any coding question, and provide real useful example code using code blocks.  Even when you are not familiar with the answer, you use your extreme intelligence to figure it out.\n"
 
-            prompt += "Your task is to write a program that: is a text-based simulation.\n"
-            prompt += "The program should be written in Python.  It should be challenging to the user, testing their common-sense knowledge, and take multiple steps to complete.  If possible, there should be distractor objects and actions that do not help progress, to measure whether the user really knows what they're doing. You should name all target objects and distractor objects with common-sense names.\n"
-            prompt += "Your code must contain a class named TextGame. The TextGame class should have the following member functions:\n"
-            prompt += "__init__(self, randomSeed), getTaskDescription(self), generatePossibleActions(self), step(self, actionStr), calculateScore(self)\n"
+            #change prompt
+            prompt_GameBasic = load_program(pjoin(args.data, "library", "GameBasic.py"))
+            prompt += "Your task is to write a program that is a text-based simulation.\n"
+            prompt += "The program should be written in Python. It should challenge the user by testing their common-sense knowledge and require multiple steps to complete. Where possible, include distractor objects and actions that do not help progress, so as to determine if the user truly understands the game mechanics. Use common-sense names for all target and distractor objects.\n"
+            prompt += "```python GameBasic.py\n"
+            prompt += prompt_GameBasic
+            prompt += "```\n"
+            prompt += "GameBasic.py includes the classes GameObject, Container, Device, Substance, World, Agent, and a base implementation of TextGame. In your game code, you must derive new classes from these basic classes to implement your game logic.\n"
+            prompt += "Your code must include a derived class of TextGame that implements the following member functions: __init__(self, randomSeed), getTaskDescription(self), generatePossibleActions(self), step(self, actionStr), and calculateScore(self).\n"
 
             if not args.zero_shot:
                 prompt += "\nHere is an example of a text-based simulation on a different topic that you can use as a template:\n"
