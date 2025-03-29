@@ -1,0 +1,342 @@
+# refactored make-ice-cubes.py
+# Process
+# Success Haonan
+
+# Task: Create a micro-simulation that models how to make ice cubes.
+# Environment: kitchen
+# Task-critical Objects: Freezer, IceCubeTray, Water, Sink
+# High-level object classes: Device (Freezer, Sink), Substance (Water), Container (Freezer, IceCubeTray, Pot)
+# Critical properties: minTemperature (Freezer), tempDecreasePerTick (Freezer), temperature (Substance), stateOfMatter (Substance), solidName/liquidName/gasName (Substance), meltingPoint/boilingPoint (Substance)
+# Actions: look, inventory, examine, take/put object, open/close container, turn on/off device, use X on Y, eat food
+# Distractor Items: Food, Pot
+# Distractor Actions: eat food
+# High-level solution procedure: fill the ice cube tray with water from the sink, put the ice cube tray in the freezer, wait for the water to freeze
+
+from data.library.GameBasic import *
+
+# A freezer, which is a cooling device. It contains things inside of it. It progressively cools them down to some temperature.
+class Freezer(Container, Device):
+    def __init__(self):
+        super().__init__("freezer")
+        self.properties["isOpenable"] = True  # A freezer is openable
+        self.properties["isOpen"] = False  # A freezer starts out closed
+        self.properties["isMoveable"] = False   # A freezer is too heavy to move (and doesn't really need to be moved for this simulation)
+
+        self.properties["isOn"] = True  # A freezer is always on
+        self.properties["isActivatable"] = False  # A freezer essentially never is turned off (unless it's unplugged, which is irelevant for this simulation)
+
+        # Set the minimum temperature of the freezer (in degrees Celsius)
+        self.properties["minTemperature"] = -4.0  # Minimum temperature of the freezer
+        self.properties["tempDecreasePerTick"] = 5.0  # How much the temperature decreases per tick
+
+    # Decrease the temperature of anything inside the freezer
+    def tick(self):
+        # If the freezer is on, then decrease the temperature of anything inside it
+        # Let's also add fidelity and say the temperature will only decrease if the freezer is closed
+        if self.properties["isOn"] and not self.properties["isOpen"]:
+            # Get a list of all objects in the freezer
+            for obj in self.getAllContainedObjectsRecursive():
+                # Decrease the object's temperature, down to the maximum temperature
+                newTemperature = max(obj.properties["temperature"] - self.properties["tempDecreasePerTick"],
+                                     self.properties["minTemperature"])
+                # Set the object's new temperature
+                obj.properties["temperature"] = newTemperature
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        outStr = "a freezer"
+
+        # A freezer is essentially always on, so we'll only mention it if it's off
+        if not self.properties["isOn"]:
+            outStr += " that is currently off, and"
+        else:
+            outStr += f" that is currently {'open' if self.properties['isOpen'] else 'closed'}"
+            # Check if empty
+            if len(self.contains) == 0:
+                outStr += " and empty"
+            elif self.properties["isOpen"]:
+                if makeDetailed:
+                    outStr += " and contains the following items:\n"
+                    for obj in self.contains:
+                        outStr += "\t" + obj.makeDescriptionStr() + "\n"
+                else:
+                    outStr += " and contains one or more items."
+
+        return outStr
+
+# An ice cube tray, which is a container that typically holds water in a freezer to let it freeze and make ice cubes.
+class IceCubeTray(Container):
+    def __init__(self):
+        GameObject.__init__(self, "ice cube tray")
+        Container.__init__(self, "ice cube tray")
+
+        self.properties["containerPrefix"] = "in"
+        # Set the properties of this object
+        self.properties["isOpenable"] = False  # An ice cube tray is not openable
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        contents = [obj.makeDescriptionStr() for obj in self.contains]
+        outStr = "an ice cube tray"
+        if contents:
+            outStr += " that looks to have " + ", ".join(contents) + " in it"
+        else:
+            outStr += " that is empty"
+        return outStr
+
+
+# An instance of a substance (here, water)
+class Water(Substance):
+    def __init__(self):
+        Substance.__init__(self, "ice", "water", "steam", boilingPoint=100, meltingPoint=0, currentTemperatureCelsius=20)
+        self.tick()
+
+
+# A sink
+class Sink(Container, Device):
+    def __init__(self):
+        GameObject.__init__(self, "sink")
+        Container.__init__(self, "sink")
+        Device.__init__(self, "sink")  # A sink is not openable
+
+    # On each step that the sink is on, add water to any object in the sink that doesn't have water on it
+    def tick(self):
+        if self.properties["isOn"]:
+            for obj in self.getAllContainedObjectsRecursive():
+                if isinstance(obj, Container) and len(obj.containsItemWithName("water"))==0 :
+                    obj.addObject(Water())
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        outStr = f"a sink that is currently {'on' if self.properties['isOn'] else 'off'}"
+        if len(self.contains) == 0:
+            outStr += " and that is empty"
+        else:
+            if makeDetailed:
+                outStr += " and that contains the following items:\n"
+                for obj in self.contains:
+                    outStr += "\t" + obj.makeDescriptionStr() + "\n"
+            else:
+                outStr += " and that contains one or more items."
+        return outStr
+
+# (Distractor item) A pot, which is a container that can hold food (and nominally here, a liquid like water to freeze)
+class Pot(Container):
+    # Constructor.
+    def __init__(self):
+        GameObject.__init__(self, "pot")
+        Container.__init__(self, "pot")
+
+        self.properties["containerPrefix"] = "in"
+        # Set the properties of this object
+        self.properties["isOpenable"] = False  # A pot is not openable
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        outStr = "a pot"
+
+        effectiveContents = []
+        for obj in self.contains:
+            effectiveContents.append(obj.makeDescriptionStr())
+
+        if (len(effectiveContents) > 0):
+            outStr += " that looks to have "
+            for i in range(len(effectiveContents)):
+                if (i == len(effectiveContents) - 1) and (len(effectiveContents) > 1):
+                    outStr += "and "
+                outStr += effectiveContents[i] + ", "
+            outStr = outStr[:-2] + " " + self.properties["containerPrefix"] + " it"
+        else:
+            outStr += " that is empty"
+
+        return outStr
+
+# (Distractor item) a food item
+class Food(GameObject):
+    def __init__(self, foodName):
+        GameObject.__init__(self, foodName)
+        self.properties["isFood"] = True
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        return "a " + self.name
+
+# The world is the root object of the game object tree.  In single room environments, it's where all the objects are located.
+class KitchenWorld(World):
+    def __init__(self):
+        World.__init__(self, "kitchen")
+
+class MakeIceCubesGame(TextGame):
+    def __init__(self, randomSeed):
+        TextGame.__init__(self, randomSeed)
+
+    def initializeWorld(self):
+        world = KitchenWorld()
+
+        # Add the agent
+        world.addObject(self.agent)
+
+        # Add a freezer with an ice cube tray
+        freezer = Freezer()
+        iceCubeTray = IceCubeTray()
+        freezer.addObject(iceCubeTray)
+        world.addObject(freezer)
+
+        # Add a sink
+        sink = Sink()
+        world.addObject(sink)
+
+        # Add a pot
+        pot = Pot()
+        world.addObject(pot)
+
+        # Distractor items
+        foodNames = ["apple", "orange", "banana", "pizza", "peanut butter", "sandwhich", "pasta", "bell pepper"]
+        self.random.shuffle(foodNames)
+        for i in range(self.random.randint(1, 3)):
+            world.addObject(Food(foodNames[i % len(foodNames)]))
+
+        return world
+
+    def getTaskDescription(self):
+        return "Your task is to make ice cubes."
+
+    def generatePossibleActions(self):
+        # Get a list of all game objects that could serve as arguments to actions
+        allObjects = self.makeNameToObjectDict()
+
+        # Make a dictionary whose keys are possible action strings, and whose values are lists that contain the arguments.
+        self.possibleActions = {}
+
+        # Actions with zero arguments
+        # (0-arg) Look around the environment and Look at the agent's current inventory
+        for action in [("look around", "look around"), ("look", "look around"), ("inventory", "inventory")]:
+            self.addAction(action[0], [action[1]])
+
+        # Actions with one object argument
+        # (1-arg) Eat, Take, Open/Close, Detailed look/examine, Turn on/Turn off device
+        for objReferent, objs in allObjects.items():
+            for obj in objs:
+                self.addAction("eat " + objReferent, ["eat", obj])
+                self.addAction("take " + objReferent, ["take", obj])
+                self.addAction("take " + objReferent + " from " + obj.parentContainer.getReferents()[0], ["take", obj])
+                self.addAction("open " + objReferent, ["open", obj])
+                self.addAction("close " + objReferent, ["close", obj])
+                self.addAction("examine " + objReferent, ["examine", obj])
+                self.addAction("turn on " + objReferent, ["turn on", obj])
+                self.addAction("turn off " + objReferent, ["turn off", obj])
+        # Actions with two object arguments
+        # (2-arg) Put, Use
+        for objReferent1, objs1 in allObjects.items():
+            for objReferent2, objs2 in allObjects.items():
+                for obj1 in objs1:
+                    for obj2 in objs2:
+                        if (obj1 != obj2):
+                            containerPrefix = "in"
+                            if obj2.properties["isContainer"]:
+                                containerPrefix = obj2.properties["containerPrefix"]
+                            self.addAction("put " + objReferent1 + " " + containerPrefix + " " + objReferent2,
+                                           ["put", obj1, obj2])
+                            self.addAction("use " + objReferent1 + " on " + objReferent2, ["use", obj1, obj2])
+
+        return self.possibleActions
+
+    # Perform the "eat" action.  Returns an observation string.
+    def actionEat(self, obj):
+        # Enforce that the object must be in the inventory to do anything with it
+        if obj.parentContainer != self.agent:
+            return "You don't currently have the " + obj.getReferents()[0] + " in your inventory."
+        # Check if the object is food
+        if obj.getProperty("isFood"):
+            # Try to pick up/take the food
+            obsStr, _, success = obj.parentContainer.takeObjectFromContainer(obj)
+            return "You eat the " + obj.name if success else "You can't see that."
+        return "You can't eat that."
+
+    # Open a container
+    def actionOpen(self, obj):
+        return obj.openContainer()[0] if obj.getProperty("isContainer") else "You can't open that."
+
+    # Close a container
+    def actionClose(self, obj):
+        return obj.closeContainer()[0] if obj.getProperty("isContainer") else "You can't close that."
+
+    def actionTurnOn(self, obj):
+        return obj.turnOn()[0] if obj.getProperty("isDevice") else "You can't turn on that."
+
+    def actionTurnOff(self, obj):
+        return obj.turnOff()[0] if obj.getProperty("isDevice") else "You can't turn off that."
+
+    ## OMIT, UNUSED (make ice cubes)
+    def actionUse(self, deviceObj, patientObject):
+        # Check if the object is a device
+        if (deviceObj.getProperty("isDevice") == True):
+            # This is handled by the object itself
+            obsStr, success = deviceObj.useWithObject(patientObject)
+            return obsStr
+        else:
+            return "You can't use that."
+
+    # Performs an action in the environment, returns the result (a string observation, the reward, and whether the game is completed).
+    def step(self, actionStr):
+        self.observationStr = ""
+        reward = 0
+
+        # Check to make sure the action is in the possible actions dictionary
+        if actionStr not in self.possibleActions:
+            self.observationStr = "I don't understand that."
+            return (self.observationStr, self.score, reward, self.gameOver, self.gameWon)
+
+        self.numSteps += 1
+
+        # Find the action in the possible actions dictionary
+        actions = self.possibleActions[actionStr]
+        action = None
+
+        # Check for an ambiguous action (i.e. one that has multiple possible arguments)
+        if (len(actions) > 1):
+            # If there are multiple possible arguments, for now just choose the first one
+            action = actions[0]
+        else:
+            # Otherwise, also just take the first action in the list of possible actions
+            action = actions[0]
+
+        # Interpret the action
+        actionVerb = action[0]
+
+        # Mapping action verbs to corresponding functions
+        action_map = {
+            "look around": self.rootObject.makeDescriptionStr,  # Look around the environment -- i.e. show the description of the world.
+            "inventory": self.actionInventory, # Display the agent's inventory
+            "examine": lambda: action[1].makeDescriptionStr(makeDetailed=True),  # Examine an object
+            "eat": lambda: self.actionEat(action[1]),  # Eat a food
+            "open": lambda: self.actionOpen(action[1]),  # Open a container
+            "close": lambda: self.actionClose(action[1]),  # Close a container
+            "take": lambda: self.actionTake(action[1]),  # Take an object from a container
+            "turn on": lambda: self.actionTurnOn(action[1]),  # Turn on a device
+            "turn off": lambda: self.actionTurnOff(action[1]),  # Turn off a device
+            "put": lambda: self.actionPut(action[1], action[2]),  # Put an object in a container
+            "use": lambda: self.actionUse(action[1], action[2])  ## OMIT, UNUSED (make ice cubes)
+        }
+
+        # Catch-all
+        self.observationStr = action_map.get(actionVerb, lambda: "ERROR: Unknown action.")()
+
+        # Do one tick of the environment
+        self.doWorldTick()
+
+        # Calculate the score
+        lastScore = self.score
+        self.calculateScore()
+        reward = self.score - lastScore
+
+        return (self.observationStr, self.score, reward, self.gameOver, self.gameWon)
+
+    # Calculate the game score
+    def calculateScore(self):
+        # Baseline score
+        self.score = 0
+        # If there is an ice cube tray with ice in it, then add a point.
+        allObjects = self.rootObject.getAllContainedObjectsRecursive()
+        if any(obj.name == "ice cube tray" and any(item.name == "ice" for item in obj.contains) for obj in allObjects):
+            self.score += 1
+            self.gameOver, self.gameWon = True, True
+
+if __name__ == "__main__":
+    # Set random seed 0 and Create a new game
+    main(MakeIceCubesGame(randomSeed=0))
