@@ -361,5 +361,5 @@ class BoilWaterGame(TextGame):
             self.score, self.gameOver, self.gameWon = 1, True, True
 
 if __name__ == "__main__":
-    # Set random seed 0 and Create a new game
-    main(BoilWaterGame(randomSeed=1))
+    # Set random seed 1 and Create a new game
+    main(BoilWaterGame(randomSeed=0))

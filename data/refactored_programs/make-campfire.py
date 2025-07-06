@@ -143,6 +143,13 @@ class ForestWorld(World):
     def __init__(self):
         World.__init__(self, "forest")
 
+    def makeDescriptionStr(self, makeDetailed=False):
+        outStr = f"You find yourself outside in a {self.room}.  Around you, you see: \n"
+        for obj in self.contains:
+            outStr += "\t" + obj.makeDescriptionStr() + "\n"
+
+        return outStr
+
 class MakeCampfireGame(TextGame):
     def __init__(self, randomSeed):
         TextGame.__init__(self, randomSeed)
