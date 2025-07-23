@@ -3,6 +3,7 @@ import sys
 import random
 import importlib
 import traceback
+import inspect
 
 import signal
 import random
@@ -77,7 +78,11 @@ def check_validity(gamefile, args):
             if os.path.dirname(gamefile) not in sys.path:
                 sys.path.append(os.path.dirname(gamefile))
 
-            TextGame = importlib.import_module(os.path.basename(gamefile)[:-3]).TextGame
+            # TextGame = importlib.import_module(os.path.basename(gamefile)[:-3]).TextGame
+            TextGame = next(obj for name, obj in
+                            inspect.getmembers(importlib.import_module(os.path.basename(gamefile)[:-3]),
+                                               inspect.isclass) if
+                            obj.__module__ == os.path.basename(gamefile)[:-3] and name.endswith('Game'))
             print(gamefile)
         except Exception as e:
             print(e)
