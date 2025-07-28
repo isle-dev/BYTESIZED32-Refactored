@@ -6,14 +6,18 @@ from httpx import ReadError, RemoteProtocolError
 from requests.exceptions import ChunkedEncodingError
 
 import openai
+
+from openai import OpenAI
+
+
 import tiktoken
 
 from tqdm import tqdm
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 
-client = openai.AzureOpenAI() if openai.api_type == "azure" else openai.OpenAI()
-
+# client = openai.AzureOpenAI() if openai.api_type == "azure" else openai.OpenAI()
+client = OpenAI(api_key="sk-bb6e2bc53fb84888868f1a9c4324f0cf", base_url="https://api.deepseek.com")
 
 if sys.version_info >= (3, 12):
     from itertools import batched
@@ -33,13 +37,31 @@ else:
 
 @lru_cache()
 def get_tokenizer(model):
-    return tiktoken.encoding_for_model(model)
+    # return tiktoken.encoding_for_model(model)
+    """
+        获取模型对应的 tokenizer。
+        对于不被 tiktoken 支持的模型（如 deepseek-chat），手动指定编码器。
+        """
+    # 手动支持的模型（DeepSeek 全系列）
+    custom_tokenizer_models = {
+        "deepseek-chat": "cl100k_base",
+        "deepseek-reasoner": "cl100k_base",
+    }
 
+    if model in custom_tokenizer_models:
+        return tiktoken.get_encoding(custom_tokenizer_models[model])
+
+    try:
+        return tiktoken.encoding_for_model(model)
+    except KeyError:
+        print(f"[Tokenizer Warning] Unknown model '{model}', falling back to cl100k_base")
+        return tiktoken.get_encoding("cl100k_base")
 
 def count_tokens(text, model=None):
     """ Get the number of tokens for a string, measured using tiktoken. """
 
     model = model or "gpt-4"
+
     if isinstance(model, str):
         tokenizer = get_tokenizer(model)
     else:
@@ -59,13 +81,24 @@ def count_tokens(text, model=None):
         | retry_if_exception_type(openai.RateLimitError)
     ),
 )
-def call_gpt(model, **kwargs):
+def call_gpt(model, stream=False, **kwargs):
     kwargs["temperature"] = 0.0
     kwargs["top_p"] = 1
     kwargs["frequency_penalty"] = 0.0
     kwargs["presence_penalty"] = 0.0
     kwargs["timeout"] = 4*10*60  # 40 minutes
     kwargs["model"] = model
+    kwargs["stream"] = stream
+
+    # 从 kwargs 提取 n，默认 1
+    n = kwargs.get("n", 1)
+
+    # 判断模型是否支持 n>1
+    if n != 1:
+        print(f"[Warning] Model '{model}' only supports n=1. Resetting.")
+        kwargs["n"] = 1  # ✅ 强制重设为 1
+    else:
+        kwargs["n"] = n
 
     try:
         response = client.chat.completions.create(**kwargs)
@@ -85,7 +118,7 @@ def call_gpt(model, **kwargs):
     ),
 )
 def llm_gpt(prompt, model="gpt-3.5-turbo", n=1, **kwargs):
-    response = call_gpt(model=model, messages=[{"role": "user", "content": prompt}], n=n, **kwargs)
+    response = call_gpt(model=model, messages=[{"role": "user", "content": prompt}], n=n, stream=False, **kwargs)
 
     if n == 1:
         choice = response.choices[0]
@@ -98,8 +131,8 @@ def llm_gpt(prompt, model="gpt-3.5-turbo", n=1, **kwargs):
     return output
 
 
-def stream_llm_gpt(prompt, model="gpt-3.5-turbo", **kwargs):
-    messages = [{"role": "user", "content": prompt}]
+def stream_llm_gpt(prompt, model="gpt-3.5-turbo", role="user", **kwargs):
+    messages = [{"role": role, "content": prompt}]
 
     response = ""
     while True:
@@ -110,6 +143,9 @@ def stream_llm_gpt(prompt, model="gpt-3.5-turbo", **kwargs):
             for chunk in pbar:
                 time.sleep(0.01)  # Should help with Errno 104: Connection reset by peer https://stackoverflow.com/questions/383738/104-connection-reset-by-peer-socket-error-or-when-does-closing-a-socket-resu
                 chunk_content = chunk.choices[0].delta.content
+                # if isinstance(chunk, tuple):
+                #     chunk = chunk[1]  # 可能是 (i, chunk) 的结构
+                # chunk_content = chunk.choices[0].delta.get("content", "")
 
                 if chunk_content:
                     response += chunk_content
@@ -135,6 +171,21 @@ def stream_llm_gpt(prompt, model="gpt-3.5-turbo", **kwargs):
             print(e)
 
     return response
+
+
+def stream_llm_gpt0(messages, model="gpt-3.5-turbo", **kwargs):
+    response_text = ""
+    try:
+        stream = call_gpt(stream=True, model=model, messages=messages, **kwargs)
+        for chunk in stream:
+            if hasattr(chunk, "choices"):
+                chunk_content = chunk.choices[0].delta.content
+                if chunk_content:
+                    response_text += chunk_content
+    except Exception as e:
+        print(f"[Stream Error] {e}")
+        raise e
+    return response_text
 
 
 def load_program(filename):
