@@ -232,7 +232,7 @@ def parse_args():
     parser.add_argument("--final-folder", default="final_games/",
                         help="Where to save the final revised games. Default: %(default)s")
 
-    parser.add_argument("--reflect-model-name", default="gpt-4o-mini")
+    parser.add_argument("--reflect-model-name", default="gpt-4-32k")
     parser.add_argument("--max-reflection-steps", type=int, default=3)
     parser.add_argument("--strip-comments", action="store_true",
                         help="Remove Python comments from generated_game to save context space.")
@@ -252,12 +252,12 @@ def parse_args():
     validity_group.add_argument("--max-num-actions", type=int, default=100)
 
     compliance_group = parser.add_argument_group("Specification Compliance")
-    compliance_group.add_argument("--compliance-model-name", default="gpt-4o-mini")
+    compliance_group.add_argument("--compliance-model-name", default="gpt-4")
     compliance_group.add_argument("--evaluation-form", type=str, default="data/test_eval.csv")
     compliance_group.add_argument("--test-prompt-input-folder", type=str, default="data/test_prompts")
 
     alignment_group = parser.add_argument_group("Physical Reality Alignment")
-    alignment_group.add_argument("--alignment-model-name", default="gpt-4o-mini")
+    alignment_group.add_argument("--alignment-model-name", default="gpt-4")
     alignment_group.add_argument("--shuffle-random-seed", type=int, default=0)
     alignment_group.add_argument("--max-depth", type=int, default=2)
     alignment_group.add_argument("--max-paths", type=int, default=25000)
@@ -266,7 +266,7 @@ def parse_args():
     alignment_group.add_argument("--sample-strategy", type=str, default="action_even")
 
     winnability_group = parser.add_argument_group("Game Winnability")
-    winnability_group.add_argument("--agent-model-name", default="gpt-4o-mini")
+    winnability_group.add_argument("--agent-model-name", default="gpt-4")
     winnability_group.add_argument("--env-step-limit", type=int, default=30)
     winnability_group.add_argument("--game-random-seed", type=int, default=20230614)
 

@@ -9,13 +9,14 @@ from os.path import join as pjoin
 
 from tqdm import tqdm
 from termcolor import colored
+import sys
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from bytes32 import check_winnability
 from bytes32 import check_compliance
 from bytes32 import check_alignment
 from bytes32 import check_validity
 from bytes32.utils import get_empty_metrics
-
 
 
 def automatic_evaluation(gamefile, args, metrics=None):
@@ -42,9 +43,11 @@ def automatic_evaluation(gamefile, args, metrics=None):
     if not args.skip_check_winnability:
         try:
             print(colored("Running winnability check...", "yellow"))
-            metrics["winnability"] = check_winnability(gamefile, args.agent_model_name, args.game_random_seed, args.env_step_limit)
+            metrics["winnability"] = check_winnability(gamefile, args.agent_model_name, args.game_random_seed,
+                                                       args.env_step_limit)
         except Exception as e:
-            stacktrace = [frame.replace(os.getcwd(), "").strip() for frame in traceback.format_tb(e.__traceback__) if gamefile in frame or "language_agent.py" in frame]
+            stacktrace = [frame.replace(os.getcwd(), "").strip() for frame in traceback.format_tb(e.__traceback__) if
+                          gamefile in frame or "language_agent.py" in frame]
             metrics["validity"]["error_msg"] = "\n".join(stacktrace) + "\n" + str(e)
 
     return metrics
@@ -71,13 +74,13 @@ def parse_args():
     validity_group.add_argument("--max-num-actions", type=int, default=100)
 
     compliance_group = parser.add_argument_group("Specification Compliance")
-    compliance_group.add_argument("--compliance-model-name", default="gpt-4")
+    compliance_group.add_argument("--compliance-model-name", default="deepseek-reasoner")
     compliance_group.add_argument("--evaluation-form", type=str, default="data/test_eval.csv")
     compliance_group.add_argument("--test-prompt-input-folder", type=str, default="data/test_prompts")
     compliance_group.add_argument("--compliance-majority-vote", type=int, default=31)
 
     alignment_group = parser.add_argument_group("Physical Reality Alignment")
-    alignment_group.add_argument("--alignment-model-name", default="gpt-4")
+    alignment_group.add_argument("--alignment-model-name", default="deepseek-reasoner")
     alignment_group.add_argument("--shuffle-random-seed", type=int, default=0)
     alignment_group.add_argument("--max-depth", type=int, default=2)
     alignment_group.add_argument("--max-paths", type=int, default=25000)
@@ -87,7 +90,7 @@ def parse_args():
     alignment_group.add_argument("--alignment-batch-size", type=int, default=1)
 
     winnability_group = parser.add_argument_group("Winnability")
-    winnability_group.add_argument("--agent-model-name", default="gpt-4")
+    winnability_group.add_argument("--agent-model-name", default="deepseek-reasoner")
     winnability_group.add_argument("--env-step-limit", type=int, default=30)
     winnability_group.add_argument("--game-random-seed", type=int, default=20230614)
 
@@ -100,7 +103,8 @@ def main():
 
     results = {}
     if os.path.exists(args.results_file):
-        input(colored(f"WARNING: {args.results_file} already exists, data will be updated.\nPress Enter to continue...", "red", attrs={'bold': True}))
+        input(colored(f"WARNING: {args.results_file} already exists, data will be updated.\nPress Enter to continue...",
+                      "red", attrs={'bold': True}))
         with open(args.results_file) as f:
             results = json.load(f)
 
