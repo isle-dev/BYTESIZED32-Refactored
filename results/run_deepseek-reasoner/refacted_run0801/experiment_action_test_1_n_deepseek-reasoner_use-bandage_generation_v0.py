@@ -1,0 +1,290 @@
+from data.library.GameBasic import *
+
+class Stove(Container, Device):
+    def __init__(self):
+        Container.__init__(self, "stove")
+        Device.__init__(self, "stove")
+        self.properties["isOn"] = False
+        self.properties["temperature_increase_per_tick"] = 2.0
+        self.properties["max_temperature"] = 100.0
+        self.properties["containerPrefix"] = "on"
+
+    def tick(self):
+        if self.properties["isOn"]:
+            all_contained = self.getAllContainedObjectsRecursive()
+            for obj in all_contained:
+                if "temperature" in obj.properties:
+                    current_temp = obj.properties["temperature"]
+                    new_temp = min(self.properties["max_temperature"], 
+                                  current_temp + self.properties["temperature_increase_per_tick"])
+                    obj.properties["temperature"] = new_temp
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        outStr = "a stove"
+        if self.properties["isOn"]:
+            outStr += " that is currently on"
+        else:
+            outStr += " that is currently off"
+        return outStr
+
+class Fridge(Container, Device):
+    def __init__(self):
+        Container.__init__(self, "fridge")
+        Device.__init__(self, "fridge")
+        self.properties["isOpenable"] = True
+        self.properties["isOpen"] = False
+        self.properties["isOn"] = True
+        self.properties["temperature_decrease_per_tick"] = 0.5
+
+    def tick(self):
+        if self.properties["isOn"] and not self.properties["isOpen"]:
+            all_contained = self.getAllContainedObjectsRecursive()
+            for obj in all_contained:
+                if "temperature" in obj.properties:
+                    current_temp = obj.properties["temperature"]
+                    new_temp = max(4.0, current_temp - self.properties["temperature_decrease_per_tick"])
+                    obj.properties["temperature"] = new_temp
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        outStr = "a fridge"
+        if self.properties["isOpen"]:
+            outStr += " that is open"
+        else:
+            outStr += " that is closed"
+        return outStr
+
+class Pot(Container):
+    def __init__(self):
+        Container.__init__(self, "pot")
+        self.properties["containerPrefix"] = "in"
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        return "a pot"
+
+class Milk(GameObject):
+    def __init__(self):
+        GameObject.__init__(self, "milk")
+        self.properties["temperature"] = 4.0
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        return "some milk"
+
+class Thermometer(GameObject):
+    def __init__(self):
+        GameObject.__init__(self, "thermometer")
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        return "a thermometer"
+
+class Baby(GameObject):
+    def __init__(self):
+        GameObject.__init__(self, "baby")
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        return "a baby"
+
+class KitchenWorld(World):
+    def __init__(self):
+        World.__init__(self, "kitchen")
+
+    def makeDescriptionStr(self, makeDetailed=False):
+        outStr = "You find yourself in a kitchen. Around you, you see:\n"
+        for obj in self.contains:
+            # if obj != self.agent:
+            outStr += "\t" + obj.makeDescriptionStr() + "\n"
+        return outStr
+
+class HeatMilkGame(TextGame):
+    def __init__(self, randomSeed):
+        TextGame.__init__(self, randomSeed)
+        self.milk_consumed = False
+
+    def initializeWorld(self):
+        world = KitchenWorld()
+        world.addObject(self.agent)
+        
+        fridge = Fridge()
+        stove = Stove()
+        pot = Pot()
+        milk = Milk()
+        thermometer = Thermometer()
+        baby = Baby()
+        
+        pot.addObject(milk)
+        fridge.addObject(pot)
+        
+        world.addObject(fridge)
+        world.addObject(stove)
+        world.addObject(thermometer)
+        world.addObject(baby)
+        
+        return world
+
+    def getTaskDescription(self):
+        return "Your task is to heat milk to a suitable temperature (37-40°C) for a baby using a stove."
+
+    def generatePossibleActions(self):
+        allObjects = self.makeNameToObjectDict()
+        self.possibleActions = {}
+        
+        # Zero-argument actions
+        for action in [("look around", "look around"), ("look", "look around"), ("inventory", "inventory")]:
+            self.addAction(action[0], [action[1]])
+        
+        # Actions with one object argument
+        for objReferent, objs in allObjects.items():
+            for obj in objs:
+                # Take actions
+                self.addAction("take " + objReferent, ["take", obj])
+                if obj.parentContainer:
+                    self.addAction("take " + objReferent + " from " + obj.parentContainer.getReferents()[0], ["take", obj])
+                
+                # Open/close actions
+                if obj.getProperty("isOpenable"):
+                    self.addAction("open " + objReferent, ["open", obj])
+                    self.addAction("close " + objReferent, ["close", obj])
+                
+                # Turn on/off actions for devices
+                if isinstance(obj, Device):
+                    self.addAction("turn on " + objReferent, ["turn on", obj])
+                    self.addAction("turn off " + objReferent, ["turn off", obj])
+                
+                # Examine action
+                self.addAction("examine " + objReferent, ["examine", obj])
+                
+                # Use thermometer action
+                if "temperature" in obj.properties:
+                    self.addAction("use thermometer on " + objReferent, ["use thermometer on", obj])
+                
+                # Feed/drink milk actions
+                if isinstance(obj, Milk):
+                    self.addAction("feed baby with " + objReferent, ["feed baby with", obj])
+                    self.addAction("drink " + objReferent, ["drink", obj])
+        
+        # Actions with two object arguments
+        for objReferent1, objs1 in allObjects.items():
+            for objReferent2, objs2 in allObjects.items():
+                for obj1 in objs1:
+                    for obj2 in objs2:
+                        if obj1 != obj2 and obj2.getProperty("isContainer"):
+                            prefix = obj2.properties["containerPrefix"]
+                            self.addAction(f"put {objReferent1} {prefix} {objReferent2}", ["put", obj1, obj2])
+        
+        return self.possibleActions
+
+    def actionOpen(self, obj):
+        if obj.getProperty("isOpenable"):
+            obsStr, success = obj.openContainer()
+            return obsStr
+        return "You can't open that."
+
+    def actionClose(self, obj):
+        if obj.getProperty("isOpenable"):
+            obsStr, success = obj.closeContainer()
+            return obsStr
+        return "You can't close that."
+
+    def actionTurnOn(self, device):
+        if isinstance(device, Device):
+            obsStr, success = device.turnOn()
+            return obsStr
+        return "You can't turn that on."
+
+    def actionTurnOff(self, device):
+        if isinstance(device, Device):
+            obsStr, success = device.turnOff()
+            return obsStr
+        return "You can't turn that off."
+
+    def actionUseThermometerOn(self, target):
+        # Check if agent has thermometer
+        thermometer_in_inventory = any(isinstance(obj, Thermometer) for obj in self.agent.contains)
+        if not thermometer_in_inventory:
+            return "You need to have the thermometer in your inventory to use it."
+        
+        if "temperature" in target.properties:
+            temp = target.properties["temperature"]
+            return f"The thermometer shows that the {target.name} is {temp:.1f}°C."
+        return f"You can't measure the temperature of the {target.name}."
+
+    def actionFeedBabyWithMilk(self, milk):
+        if milk.parentContainer != self.agent:
+            return "You need to have the milk in your inventory to feed the baby."
+        
+        milk.removeSelfFromContainer()
+        self.milk_consumed = True
+        temp = milk.properties["temperature"]
+        
+        if 37 <= temp <= 40:
+            self.score = 1
+            self.gameOver = True
+            self.gameWon = True
+            return "You feed the baby with the milk. The temperature is perfect! The baby drinks happily."
+        else:
+            self.score = 0
+            self.gameOver = True
+            self.gameWon = False
+            status = "cold" if temp < 37 else "hot"
+            return f"You feed the baby with the milk. It's too {status}! The baby cries."
+
+    def actionDrinkMilk(self, milk):
+        if milk.parentContainer != self.agent:
+            return "You need to have the milk in your inventory to drink it."
+        
+        milk.removeSelfFromContainer()
+        self.milk_consumed = True
+        self.gameOver = True
+        self.gameWon = False
+        self.score = 0
+        status = "cold" if milk.properties["temperature"] < 37 else "hot"
+        return f"You drink the milk. It tastes {status}. But now you have no milk for the baby!"
+
+    def step(self, actionStr):
+        self.observationStr = ""
+        reward = 0
+        
+        if actionStr not in self.possibleActions:
+            self.observationStr = "I don't understand that."
+            return (self.observationStr, self.score, reward, self.gameOver, self.gameWon)
+        
+        self.numSteps += 1
+        actions = self.possibleActions[actionStr]
+        action = actions[0]
+        actionVerb = action[0]
+        
+        action_map = {
+            "look around": lambda: self.rootObject.makeDescriptionStr(),
+            "inventory": lambda: self.actionInventory(),
+            "examine": lambda: action[1].makeDescriptionStr(makeDetailed=True),
+            "open": lambda: self.actionOpen(action[1]),
+            "close": lambda: self.actionClose(action[1]),
+            "take": lambda: self.actionTake(action[1]),
+            "put": lambda: self.actionPut(action[1], action[2]),
+            "turn on": lambda: self.actionTurnOn(action[1]),
+            "turn off": lambda: self.actionTurnOff(action[1]),
+            "use thermometer on": lambda: self.actionUseThermometerOn(action[1]),
+            "feed baby with": lambda: self.actionFeedBabyWithMilk(action[1]),
+            "drink": lambda: self.actionDrinkMilk(action[1])
+        }
+        
+        self.observationStr = action_map.get(actionVerb, lambda: "ERROR: Unknown action.")()
+        
+        self.doWorldTick()
+        lastScore = self.score
+        self.calculateScore()
+        reward = self.score - lastScore
+        
+        # Check if milk is consumed without feeding baby
+        if self.milk_consumed and not self.gameOver:
+            self.gameOver = True
+            self.gameWon = False
+            self.score = 0
+        
+        return (self.observationStr, self.score, reward, self.gameOver, self.gameWon)
+
+    def calculateScore(self):
+        # Score is updated in specific actions (feed/drink milk)
+        pass
+
+if __name__ == "__main__":
+    main(HeatMilkGame(randomSeed=0))
