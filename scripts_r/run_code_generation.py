@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("experiment_file", help="CSV file")
     parser.add_argument("--data", type=str, default="./data/")
     parser.add_argument("--output-folder", type=str, default=f"./results/{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}/generated_games/")
-    parser.add_argument("--model", type=str, default="deepseek-reasoner")
+    parser.add_argument("--model", type=str, default="gpt-4o-mini")
 
     parser.add_argument("--strip-comments", action="store_true")
     parser.add_argument("--zero-shot", action="store_true", help="Perform zero-shot generation (no in-context example code).")
