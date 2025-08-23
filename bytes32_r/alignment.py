@@ -2,8 +2,10 @@ import itertools
 import os
 import sys
 import json
+from os.path import join as pjoin
 import random
 import importlib
+import importlib.util
 from collections import defaultdict
 from termcolor import colored
 
@@ -196,6 +198,16 @@ def check_alignment(game_file, args):
                         inspect.getmembers(importlib.import_module(game_name[:-3]),
                                            inspect.isclass) if
                         obj.__module__ == game_name[:-3] and name.endswith('Game'))
+
+        gamebasic = pjoin(args.data, "library/GameBasic.py")
+        spec = importlib.util.spec_from_file_location("GameBasic", gamebasic)
+        GameBasicModule = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(GameBasicModule)
+        GameBasicTextGame = next(
+            obj for name, obj in inspect.getmembers(GameBasicModule, inspect.isclass)
+            if name.endswith("Game") and name == "TextGame"
+        )
+
     except SyntaxError as e:
         print(f"Syntax error in {game_name}")
         metric["error_msg"] = str(e)
@@ -204,6 +216,7 @@ def check_alignment(game_file, args):
         print(f"Name error in {game_name}")
         metric["error_msg"] = str(e)
         return metric
+
 
     # Create the pathcrawler
     pathcrawler = Pathcrawler(TextGame, tqdm_desc=f"Crawling paths on {game_name}",
@@ -227,8 +240,8 @@ def check_alignment(game_file, args):
         }
 
     game_task = packed["gameTask"]
-
     all_paths = packed["paths"]
+
     negative_response_paths = [path for path in packed["paths"] if path[-1]["observationStr"] is None or
                             any([phrase in str(path[-1]["observationStr"]).lower() for phrase in NEGATIVE_RESPONSE_PHRASES])]
     positive_response_paths = [path for path in packed["paths"] if not (path[-1]["observationStr"] is None or
@@ -237,7 +250,6 @@ def check_alignment(game_file, args):
     paths_by_action = defaultdict(list)
     for path in packed["paths"]:
         paths_by_action[extract_initial_action_token(path[-1]["actionStrTaken"])].append(path)
-
     # Subsample a specified number of paths to pass to OpenAI, based on selected strategy
     sampled_paths = []
 
@@ -289,12 +301,6 @@ def check_alignment(game_file, args):
     def _parse_response(response):
         data = []
 
-        def try_json_line(line):
-            try:
-                return json.loads(line)
-            except json.JSONDecodeError:
-                return None
-
         def try_markdown_block(lines):
             item = {}
             for line in lines:
@@ -320,7 +326,7 @@ def check_alignment(game_file, args):
                 continue
 
             # 尝试逐行 JSON 解析
-            parsed_json = try_json_line(stripped)
+            parsed_json = json.loads(stripped)
             if parsed_json:
                 data.append(parsed_json)
                 continue
@@ -339,7 +345,6 @@ def check_alignment(game_file, args):
             parsed_md = try_markdown_block(buffer)
             if parsed_md:
                 data.append(parsed_md)
-
         return data
 
     evaluations = []
@@ -357,14 +362,17 @@ def check_alignment(game_file, args):
             playthroughs.append(f'{{"idx": {i}, "playthrough": {playthrough}}}')
 
         playthroughs_text = "\n".join(playthroughs)
+
         full_prompt = f"{BASE_PROMPT_ALIGNMENT}\n\nGame Task: {game_task}\n\nHere are the playthroughs to evaluate:\n{playthroughs_text}\n\n"
         full_prompt += "Evaluation:\n"
 
         response = stream_llm_gpt(full_prompt, model=args.alignment_model_name)
+
         response_data = _parse_response(response)
 
         idx = 0
         for data in response_data:
+            print(data)
             if idx != data['idx']:
                 print(colored(f"Warning: missing response for playthrough {idx}. Recomputing...", "yellow"))
                 full_prompt = f"{BASE_PROMPT_ALIGNMENT}\n\nGame Task: {game_task}\n\nHere are the playthroughs to evaluate:\n{playthroughs[idx]}\n\n"
