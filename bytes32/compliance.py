@@ -3,12 +3,12 @@ import time
 
 import pandas as pd
 from termcolor import colored
-
+from os.path import join as pjoin
 from bytes32.utils import llm_gpt, count_tokens, load_program
 
 
 def build_requirement_text(evaluation_form_df, experiment, test_id):
-    requirement = evaluation_form_df[experiment][int(test_id)-1]
+    requirement = evaluation_form_df[experiment][int(test_id) - 1]
     requirement_text = ''
     if experiment == 'object':
         requirement_text = f"Does the simulation have the object {requirement}?\n"
@@ -43,10 +43,13 @@ def check_compliance(gamefile, args):
     eval_requirement = build_requirement_text(evaluation_form_df, experiment, test_id)
 
     spec_prompt = load_program(f"{args.test_prompt_input_folder}/test_{test_id}.py")
-    print (f"Specification prompt: {count_tokens(spec_prompt)} tokens.")
+    print(f"Specification prompt: {count_tokens(spec_prompt)} tokens.")
 
     generated_game = load_program(f"{gamefile}")
-    print (f"Generated program: {count_tokens(generated_game)} tokens.")
+    print(f"Generated program: {count_tokens(generated_game)} tokens.")
+
+    GameBasic = load_program(pjoin(args.data, "library/GameBasic.py"))
+    print(f"GameBasic program: {count_tokens(GameBasic)} tokens.")
 
     # 'DeveloperGPT' prompt from @skirano
     prompt = "You are DeveloperGPT, the most advanced AI developer tool on the planet.  You answer any coding question, and provide real useful example code using code blocks.  Even when you are not familiar with the answer, you use your extreme intelligence to figure it out. \n"
@@ -58,23 +61,31 @@ def check_compliance(gamefile, args):
     prompt += spec_prompt
     prompt += "```\n"
 
+    prompt += "Here is the GameBasic library used by the simulation:\n"
+    prompt += "```"
+    prompt += GameBasic
+    prompt += "```\n"
+
     prompt += "Here is the code of the simulation \n"
     prompt += "```"
     prompt += generated_game
     prompt += "```\n"
-    prompt += "Answer the following question based on the given specification and the simulation code:\n"
+    prompt += "Answer the following question based on the given specification, the GameBasic library, and the simulation code:\n"
     prompt += eval_requirement
 
     prompt += "Answer 'Yes' or 'No' first and briefly explain your answer."
 
     start = time.time()
-    print(colored(f"Prompting {args.compliance_model_name} for compliance evaluation (using {args.compliance_majority_vote} votes)...", "yellow"))
+    print(colored(
+        f"Prompting {args.compliance_model_name} for compliance evaluation (using {args.compliance_majority_vote} votes)...",
+        "yellow"))
 
+    # responses = llm_gpt(prompt, model=args.compliance_model_name, n=args.compliance_majority_vote)
     responses = llm_gpt(prompt, model=args.compliance_model_name, n=args.compliance_majority_vote)
     if args.compliance_majority_vote == 1:
         responses = [responses]
 
-    print(colored(f"  Response time: {time.time()-start} secs.", "yellow"))
+    print(colored(f"  Response time: {time.time() - start} secs.", "yellow"))
     print(colored(f"  Responded with {sum(count_tokens(response) for response in responses)} tokens.", "yellow"))
     majority_vote = sum(response.lower().startswith('yes') for response in responses) / args.compliance_majority_vote
     print(colored(f"Majority vote: {majority_vote:.1%}", "green"))

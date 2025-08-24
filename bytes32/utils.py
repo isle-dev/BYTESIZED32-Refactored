@@ -17,7 +17,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 
 # client = openai.AzureOpenAI() if openai.api_type == "azure" else openai.OpenAI()
-client = OpenAI(api_key="sk-bb6e2bc53fb84888868f1a9c4324f0cf", base_url="https://api.deepseek.com")
+# client = OpenAI(api_key="x", base_url="https://api.deepseek.com")
+client = OpenAI(api_key="x")
 
 if sys.version_info >= (3, 12):
     from itertools import batched
@@ -118,7 +119,7 @@ def call_gpt(model, stream=False, **kwargs):
     ),
 )
 def llm_gpt(prompt, model="gpt-3.5-turbo", n=1, **kwargs):
-    response = call_gpt(model=model, messages=[{"role": "user", "content": prompt}], n=n, stream=False, **kwargs)
+    response = call_gpt(model=model, messages=[{"role": "user", "content": prompt}], n=n, **kwargs)
 
     if n == 1:
         choice = response.choices[0]

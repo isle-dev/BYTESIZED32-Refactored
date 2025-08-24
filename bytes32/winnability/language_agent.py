@@ -1,4 +1,3 @@
-
 import os
 import glob
 import json
@@ -41,19 +40,30 @@ def llm_gpt_with_pbar(prompt, model, pbar=None, **kwargs):
     return output
 
 
+import inspect
+
+
 def check_winnability(gamefile, model_name, random_seed, env_step_limit, logger=None):
     logger = logger or logging.getLogger()
 
     # Import environment
-    #sys.path.append(os.path.dirname(gamefile))
-    TextGame = __import__(os.path.basename(gamefile[:-3])).TextGame
+    # sys.path.append(os.path.dirname(gamefile))
+    # TextGame = __import__(os.path.basename(gamefile[:-3])).TextGame
+    TextGame = next(obj for name, obj in
+                    inspect.getmembers(__import__(os.path.basename(gamefile[:-3])),
+                                       inspect.isclass) if
+                    obj.__module__ == os.path.basename(gamefile[:-3]) and name.endswith('Game'))
 
     # Load ICL example
     with open(EXAMPLE_FILE) as f:
         example = f.read()
 
     # Load encoding tool to count token numbers
-    encoding = tiktoken.encoding_for_model(model_name)
+    encoding = tiktoken.get_encoding("cl100k_base")
+    # if model_name == "deepseek-reasoner":
+    #     encoding = tiktoken.get_encoding("cl100k_base")
+    # else:
+    #     encoding = tiktoken.get_encoding(model_name)
 
     # Initialize environment
     env = TextGame(randomSeed=random_seed)
@@ -86,7 +96,8 @@ def check_winnability(gamefile, model_name, random_seed, env_step_limit, logger=
     init_prompt += f"\nThe game you are about to play only understands one command at a time from the following list of commands: {actions}.\n"
     init_prompt += "Prepend your thoughts with 'think:' when planning your next steps.\n"
     init_prompt += "When you think the task is completed, say 'done'.\n"
-    init_prompt += "If you think the task can't be completed at all, say 'bug'.\n"
+    # init_prompt += "If you think the task can't be completed at all, say 'bug'.\n"
+    init_prompt += "If you believe the task truly cannot be completed, or if you are repeating failed actions with no progress, or if all actions only result in errors, then say 'bug'.\n"
 
     prompt = '\n\nHere is the task:\n' + clean(obs) + '\n' + task_description + '\n>'
 
@@ -98,7 +109,7 @@ def check_winnability(gamefile, model_name, random_seed, env_step_limit, logger=
     elif model_name == "gpt-4":
         max_len = 8192
     else:
-        max_len = 4097
+        max_len = 8192
 
     pbar = tqdm(total=max_steps, desc="Steps", unit="step")
     while not done:
@@ -111,19 +122,20 @@ def check_winnability(gamefile, model_name, random_seed, env_step_limit, logger=
             # If init prompt doesn't have actions, cut game prompt
             if index1 == -1:
                 index1_prompt = prompt.find('>')
-                index2_prompt = prompt.find('>', index1_prompt+1)
+                index2_prompt = prompt.find('>', index1_prompt + 1)
                 prompt = prompt[:index1_prompt] + prompt[index2_prompt:]
 
             # Cut initial prompt
             else:
-                index2 = init_prompt.find('>', index1+1)
+                index2 = init_prompt.find('>', index1 + 1)
                 if index2 == -1:
                     init_prompt = init_prompt[:index1]
                 else:
                     init_prompt = init_prompt[:index1] + init_prompt[index2:]
 
-        action = llm_gpt(init_prompt + prompt, stop=['\n'], model=model_name, pbar=pbar).strip("> ")
+        action = llm_gpt(init_prompt + prompt, stop=['\n'], model=model_name).strip("> ")
         pbar.set_postfix_str("")
+
         action = action.strip()
         recent_actions.append(action)
 
@@ -158,7 +170,7 @@ def check_winnability(gamefile, model_name, random_seed, env_step_limit, logger=
         # Add action and observaton to game prompt
         logger.info(colored(f' {action}', 'green') + f'\n{obs}')
         prompt += f' {action}\n{obs}\n>'
-
+        print(prompt)
         step += 1
         if (step >= max_steps) or done or game_won:
             break
@@ -183,7 +195,8 @@ def check_winnability(gamefile, model_name, random_seed, env_step_limit, logger=
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--game_folder", default="../cleaned_generated_game", help="Path to a folder containing BYTESIZED32 games.")
+    parser.add_argument("--game_folder", default="../cleaned_generated_game",
+                        help="Path to a folder containing BYTESIZED32 games.")
     parser.add_argument("--max_reflection_steps", type=int, default=3)
     parser.add_argument("--env_step_limit", type=int, default=30)
     parser.add_argument("--random-seed", type=int, default=20230614)
@@ -201,7 +214,7 @@ def init_logger(args, gamefile, log_level=INFO):
     logger.handlers.clear()
 
     formatter = logging.Formatter("[%(asctime)s][%(levelname)s\t] %(message)s",
-                                    datefmt='%Y-%m-%d %H:%M:%S')
+                                  datefmt='%Y-%m-%d %H:%M:%S')
     logger.setLevel(log_level)
 
     ch = logging.StreamHandler()
@@ -251,7 +264,8 @@ def main():
         logger = init_logger(args, gamefile)
         logger.info(args)
         try:
-            stats[game_file_name] = eval_gamefile(gamefile, args.model_name, args.random_seed, args.env_step_limit, logger)
+            stats[game_file_name] = eval_gamefile(gamefile, args.model_name, args.random_seed, args.env_step_limit,
+                                                  logger)
         except Exception as e:
             stats[game_file_name] = str(e)
 
