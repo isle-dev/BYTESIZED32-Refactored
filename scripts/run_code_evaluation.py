@@ -59,6 +59,7 @@ def parse_args():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--game-folder")
     group.add_argument("--games", nargs="+")
+    parser.add_argument("--data", type=str, default="./data/")
 
     parser.add_argument("--results-file", type=str, default="eval_results.json")
 
@@ -74,24 +75,24 @@ def parse_args():
     validity_group.add_argument("--max-num-actions", type=int, default=100)
 
     compliance_group = parser.add_argument_group("Specification Compliance")
-    compliance_group.add_argument("--compliance-model-name", default="deepseek-reasoner")
+    compliance_group.add_argument("--compliance-model-name", default="gpt-4o-mini")
     compliance_group.add_argument("--evaluation-form", type=str, default="data/test_eval.csv")
     compliance_group.add_argument("--test-prompt-input-folder", type=str, default="data/test_prompts")
     compliance_group.add_argument("--compliance-majority-vote", type=int, default=31)
 
     alignment_group = parser.add_argument_group("Physical Reality Alignment")
-    alignment_group.add_argument("--alignment-model-name", default="deepseek-reasoner")
+    alignment_group.add_argument("--alignment-model-name", default="gpt-4o-mini")
     alignment_group.add_argument("--shuffle-random-seed", type=int, default=0)
     alignment_group.add_argument("--max-depth", type=int, default=2)
     alignment_group.add_argument("--max-paths", type=int, default=25000)
     alignment_group.add_argument("--error-strategy", type=str, default="fail")
-    alignment_group.add_argument("--num-samples-per-game", type=int, default=100)
+    alignment_group.add_argument("--num-samples-per-game", type=int, default=1)
     alignment_group.add_argument("--sample-strategy", type=str, default="action_even")
     alignment_group.add_argument("--alignment-batch-size", type=int, default=1)
 
     winnability_group = parser.add_argument_group("Winnability")
-    winnability_group.add_argument("--agent-model-name", default="deepseek-reasoner")
-    winnability_group.add_argument("--env-step-limit", type=int, default=30)
+    winnability_group.add_argument("--agent-model-name", default="gpt-4o-mini")
+    winnability_group.add_argument("--env-step-limit", type=int, default=50)
     winnability_group.add_argument("--game-random-seed", type=int, default=20230614)
 
     args = parser.parse_args()

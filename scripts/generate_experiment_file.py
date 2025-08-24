@@ -5,10 +5,9 @@ from os.path import join as pjoin
 import pandas as pd
 
 
-
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("experiment-name", choices=["object", "action", "distractor"])
+    parser.add_argument("experiment_name", choices=["object", "action", "distractor"])
     parser.add_argument("--data", default="./data/")
     parser.add_argument("--output", help="Name of the experiment file. Default: experiment{experiment-name}.csv")
     args = parser.parse_args()
@@ -47,7 +46,7 @@ def gen_experiment_file_distractor(args):
     result = []
     for _, row in test_df.iterrows():
         method_idx = row.values[1]
-        col_name = train_df.keys()[method_idx+1]
+        col_name = train_df.keys()[method_idx + 1]
         cols = train_df[["Game Name", col_name]]
         na_rows = cols[cols[col_name].isna()]
         value_rows = cols[~cols[col_name].isna()]
@@ -83,6 +82,7 @@ def gen_experiment_file_object(args):
     df_out = pd.DataFrame(result)
     with open(args.output, "w") as f:
         df_out.to_csv(f, index=False, header=False)
+
 
 def main():
     args = parse_args()
