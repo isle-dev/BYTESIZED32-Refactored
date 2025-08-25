@@ -199,15 +199,6 @@ def check_alignment(game_file, args):
                                            inspect.isclass) if
                         obj.__module__ == game_name[:-3] and name.endswith('Game'))
 
-        gamebasic = pjoin(args.data, "library/GameBasic.py")
-        spec = importlib.util.spec_from_file_location("GameBasic", gamebasic)
-        GameBasicModule = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(GameBasicModule)
-        GameBasicTextGame = next(
-            obj for name, obj in inspect.getmembers(GameBasicModule, inspect.isclass)
-            if name.endswith("Game") and name == "TextGame"
-        )
-
     except SyntaxError as e:
         print(f"Syntax error in {game_name}")
         metric["error_msg"] = str(e)
