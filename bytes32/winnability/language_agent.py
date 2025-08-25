@@ -170,7 +170,7 @@ def check_winnability(gamefile, model_name, random_seed, env_step_limit, logger=
         # Add action and observaton to game prompt
         logger.info(colored(f' {action}', 'green') + f'\n{obs}')
         prompt += f' {action}\n{obs}\n>'
-        print(prompt)
+    
         step += 1
         if (step >= max_steps) or done or game_won:
             break
