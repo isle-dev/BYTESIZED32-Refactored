@@ -372,7 +372,6 @@ def check_alignment(game_file, args):
 
         idx = 0
         for data in response_data:
-            print(data)
             if idx != data['idx']:
                 print(colored(f"Warning: missing response for playthrough {idx}. Recomputing...", "yellow"))
                 full_prompt = f"{BASE_PROMPT_ALIGNMENT}\n\nGame Task: {game_task}\n\nHere are the playthroughs to evaluate:\n{playthroughs[idx]}\n\n"
