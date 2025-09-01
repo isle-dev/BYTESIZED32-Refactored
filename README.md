@@ -1,5 +1,5 @@
 # BYTESIZED32
-Byte-sized text games for code generation tasks on virtual environments.
+RefactoredByte-sized32 text games for code generation tasks on virtual environments.
 
 ## Quickstart
 Clone the repository:
