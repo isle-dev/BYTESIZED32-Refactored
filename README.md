@@ -16,7 +16,15 @@ pip install -e .
 ```
 
 ### API key
-You will need an OpenAI API key to run the experiments. Set the environment variable `OPENAI_API_KEY` or `AZURE_OPENAI_API_KEY` to your key.
+Set the API key in `byte32/utils`
+```bash
+# OpenAI
+client = OpenAI(api_key="xxx")
+# Deepseek
+client = OpenAI(api_key="xxx", base_url="https://api.deepseek.com/v1")
+# Groq
+client = OpenAI(api_key="xxx", base_url="https://api.groq.com/openai/v1")
+```
 
 ## Run Generation
 We run three ablation experiments, namely *object*, *action*, *distractor*.
