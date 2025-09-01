@@ -1,4 +1,4 @@
-# BYTESIZED32
+# RefactoredByte-sized32
 RefactoredByte-sized32 text games for code generation tasks on virtual environments.
 
 ## Quickstart
