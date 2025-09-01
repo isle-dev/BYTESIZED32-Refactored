@@ -1,0 +1,4 @@
+Error code: 400 - {'error': {'message': 'Invalid n value (currently only n = 1 is supported)', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
+deepseek-R1 only support n=1
+
+deepseek running very slowly
