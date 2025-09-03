@@ -32,9 +32,9 @@ We run three ablation experiments, namely *object*, *action*, *distractor*.
 ### Prompt Game Selection
 First, we generate three csv files, one for each experiment. Those files contain information about which games to use as in-context example for the code generation.
 ```bash
-python scripts/generate_experiment_file.py action
-python scripts/generate_experiment_file.py distractor
-python scripts/generate_experiment_file.py object
+python scripts/generate_experiment_file.py action --output ./data/experiment_action.csv
+python scripts/generate_experiment_file.py distractor --output ./data/experiment_distractor.csv
+python scripts/generate_experiment_file.py object --output ./data/experiment_object.csv
 ```
 The above script makes use of train and test csv files found in the `data/` folder. They describe what actions/distractors/objects are found in each game. In `action_train.csv`, `distractor_train.csv`, `object_train.csv`, 1 refers to there exists such an action/distractor/object, and empty entries refers to there does not exist such an action/distractor/object. In `action_test.csv`, the second column is one action (human-generated) that we will find a similar prompt game with the same action. In `distractor_test.csv`, 1 means this test needs a distractor and 0 means it does not need a distractor. In `object_test.csv`, 2 means we will find a prompt with this object for similarity, 1 means this kind of object is also needed for this test and empty entries means this object may not be required.
 

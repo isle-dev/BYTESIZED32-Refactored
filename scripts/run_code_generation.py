@@ -42,6 +42,11 @@ def main():
     experiment_df = experiment_df.dropna()
     
     for n, (_, row) in enumerate(experiment_df.iterrows()):
+        # Safety check: ensure we don't exceed available test files
+        if n >= 16:
+            print(f"ERROR: Attempting to process row {n} but only 16 test files exist. Stopping.")
+            break
+            
         # The first prompt includes the desired feature, the second prompt does not
         ablation_games = {"p": row.values[0], "n": row.values[1]}
 
