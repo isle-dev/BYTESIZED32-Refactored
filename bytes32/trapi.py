@@ -1,10 +1,18 @@
+from functools import lru_cache
 from openai import AzureOpenAI
 from azure.identity import DefaultAzureCredential, ChainedTokenCredential, AzureCliCredential, ManagedIdentityCredential, get_bearer_token_provider
 import re
 
 
-def get_llm_client():
-    ep = "gpt-4o"
+@lru_cache(maxsize=None)
+def get_llm_client(model_name=None):
+    # Default to gpt-4o if no model is specified
+    ep = model_name or "gpt-4o"
+    
+    # Only support gpt-4o and gpt-5
+    if ep not in ["gpt-4o", "gpt-5"]:
+        raise ValueError(f"Unsupported model: {ep}. Only 'gpt-4o' and 'gpt-5' are supported.")
+    
     scope = "api://trapi/.default"
     credential = get_bearer_token_provider(
         ChainedTokenCredential(

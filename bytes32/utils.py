@@ -20,7 +20,7 @@ from bytes32.trapi import get_llm_client
 # client = openai.AzureOpenAI() if openai.api_type == "azure" else openai.OpenAI()
 # client = OpenAI(api_key="x", base_url="https://api.deepseek.com")
 # client = OpenAI(api_key="x")
-client, _ = get_llm_client()
+# Removed global client initialization - now created per request with model parameter
 
 
 if sys.version_info >= (3, 12):
@@ -37,6 +37,12 @@ else:
 
         if batch:
             yield batch
+
+
+# Cache LLM client per model to avoid recreating it on every call
+@lru_cache(maxsize=None)
+def _get_cached_client(model: str):
+    return get_llm_client(model)
 
 
 @lru_cache()
@@ -93,6 +99,11 @@ def call_gpt(model, stream=False, **kwargs):
     kwargs["timeout"] = 4*10*60  # 40 minutes
     kwargs["model"] = model
     kwargs["stream"] = stream
+
+    # Get cached client for the specific model
+    client, deployment_name = _get_cached_client(model)
+
+    kwargs["model"] = deployment_name
 
     # 从 kwargs 提取 n，默认 1
     n = kwargs.get("n", 1)
