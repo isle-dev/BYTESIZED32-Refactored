@@ -44,7 +44,4 @@ def get_llm_client(model_name=None):
         api_version=api_version,
     )
 
-    # Note: With TRAPI "shared" instances, deployments are harmonized, so callers can pass
-    # model="gpt-4o" or model="gpt-5" directly. The computed deployment_name is only needed
-    # for non-harmonized endpoints; we keep it here for reference but do not return it.
-    return client
+    return client, deployment_name
