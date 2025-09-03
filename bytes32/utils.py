@@ -101,7 +101,9 @@ def call_gpt(model, stream=False, **kwargs):
     kwargs["stream"] = stream
 
     # Get cached client for the specific model
-    client = _get_cached_client(model)
+    client, deployment_name = _get_cached_client(model)
+
+    kwargs["model"] = deployment_name
 
     # 从 kwargs 提取 n，默认 1
     n = kwargs.get("n", 1)
