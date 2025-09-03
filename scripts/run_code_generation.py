@@ -38,7 +38,10 @@ def main():
 
     experiment_name = args.experiment_file.split("/")[-1].split(".csv")[0]
     experiment_df = pd.read_csv(args.experiment_file, header=None)
-    for n, row in experiment_df.iterrows():
+    # Filter out any empty rows to avoid index issues
+    experiment_df = experiment_df.dropna()
+    
+    for n, (_, row) in enumerate(experiment_df.iterrows()):
         # The first prompt includes the desired feature, the second prompt does not
         ablation_games = {"p": row.values[0], "n": row.values[1]}
 
