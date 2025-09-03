@@ -52,7 +52,7 @@ Each command will generate 32 games according to the experiment file. By default
 ### Perform Code Reflection
 Some of the generated games may not be valid Python code. We use the following script to perform self-reflection and improve code according to technical validity.
 ```bash
-python scripts/run_code_reflection.py --game-folder results/gpt-4o/generated_games/ --revision-folder results/gpt-4o/revised_games/
+python scripts/run_code_reflection.py --game-folder results/gpt-4o/generated_games/ --revision-folder results/gpt-4o/revised_games/ --reflect-model-name gpt-4o
 ```
 
 ## Run Automatic Evaluation
@@ -71,9 +71,9 @@ python scripts/run_code_evaluation.py --game-folder results/gpt-4o/revised_games
 ## Visualize Results
 
 ```bash
-python scripts/make_table2.py --results results/gpt-4o/results.json
-python scripts/make_table3.py --results results/gpt-4o/results.json
-python scripts/make_figure4.py --results results/gpt-4o/results.json
+python scripts/make_table2.py --results results/gpt-4o/results.json --compliance-model-name gpt-4o --alignment-model-name gpt-4o --agent-model-name gpt-4o
+python scripts/make_table3.py --results results/gpt-4o/results.json --compliance-model-name gpt-4o --alignment-model-name gpt-4o --agent-model-name gpt-4o
+python scripts/make_figure4.py --results results/gpt-4o/results.json --compliance-model-name gpt-4o --alignment-model-name gpt-4o --agent-model-name gpt-4o
 ```
 
 # Citing ByteSized32
