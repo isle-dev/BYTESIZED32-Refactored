@@ -63,7 +63,7 @@ The provided codebase can run automatic evaluation on the generated games. The e
 - **Game Winnability**: whether the generated game is winnable, i.e. there exists a sequence of actions that lead to a winning state.
 
 ```bash
-python scripts/run_code_evaluation.py --game-folder results/gpt-4o/revised_games/ --results-file results/gpt-4o/results.json
+python scripts/run_code_evaluation.py --game-folder results/gpt-4o/revised_games/ --results-file results/gpt-4o/results.json --compliance-model-name gpt-4o --alignment-model-name gpt-4o --agent-model-name gpt-4o
 ```
 
 **Note**: The Specification Compliance evaluation depends on `data/test_eval.csv` which stores all the labels (i.e. actions and objects that we are interested in and that should be included in the generated game, as well as whether the generated game should contain distractors (1 means there should be a distractor, otherwise it is 0)). This file was generated manually. **If you generate your own experiment file, change this file accordingly.**
@@ -71,9 +71,9 @@ python scripts/run_code_evaluation.py --game-folder results/gpt-4o/revised_games
 ## Visualize Results
 
 ```bash
-python scripts/make_table2.py --results results/gpt-4o/results.json --compliance-model-name gpt-4o --alignment-model-name gpt-4o --agent-model-name gpt-4o
-python scripts/make_table3.py --results results/gpt-4o/results.json --compliance-model-name gpt-4o --alignment-model-name gpt-4o --agent-model-name gpt-4o
-python scripts/make_figure4.py --results results/gpt-4o/results.json --compliance-model-name gpt-4o --alignment-model-name gpt-4o --agent-model-name gpt-4o
+python scripts/make_table2.py --results results/gpt-4o/results.json
+python scripts/make_table3.py --results results/gpt-4o/results.json
+python scripts/make_figure4.py --results results/gpt-4o/results.json
 ```
 
 # Citing ByteSized32
