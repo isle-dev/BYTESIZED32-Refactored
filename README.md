@@ -43,16 +43,16 @@ Running the three commands above will give you `experiment_action.csv`, `experim
 ### Code Generation
 With the generated csv files, we can now run the code generation for each experiment.
 ```bash
-python scripts/run_code_generation.py data/experiment_action.csv --output-folder results/run/
-python scripts/run_code_generation.py data/experiment_distractor.csv --output-folder results/run/
-python scripts/run_code_generation.py data/experiment_object.csv --output-folder results/run/
+python scripts/run_code_generation.py data/experiment_action.csv --output-folder results/gpt-4o/ --model gpt-4o
+python scripts/run_code_generation.py data/experiment_distractor.csv --output-folder results/gpt-4o/ --model gpt-4o
+python scripts/run_code_generation.py data/experiment_object.csv --output-folder results/gpt-4o/ --model gpt-4o
 ```
 Each command will generate 32 games according to the experiment file. By default, the generated games along with the raw LLM prompts and responses are saved in `results/{datetime}/generated_games/` folder. See `run_code_generation.py --help` for all additional arguments.
 
 ### Perform Code Reflection
 Some of the generated games may not be valid Python code. We use the following script to perform self-reflection and improve code according to technical validity.
 ```bash
-python scripts/run_code_reflection.py --game-folder results/run/generated_games/ --revision-folder results/run/revised_games/
+python scripts/run_code_reflection.py --game-folder results/gpt-4o/generated_games/ --revision-folder results/gpt-4o/revised_games/
 ```
 
 ## Run Automatic Evaluation
@@ -63,7 +63,7 @@ The provided codebase can run automatic evaluation on the generated games. The e
 - **Game Winnability**: whether the generated game is winnable, i.e. there exists a sequence of actions that lead to a winning state.
 
 ```bash
-python scripts/run_code_evaluation.py --game-folder results/run/revised_games/ --results-file results/run/results.json
+python scripts/run_code_evaluation.py --game-folder results/gpt-4o/revised_games/ --results-file results/gpt-4o/results.json
 ```
 
 **Note**: The Specification Compliance evaluation depends on `data/test_eval.csv` which stores all the labels (i.e. actions and objects that we are interested in and that should be included in the generated game, as well as whether the generated game should contain distractors (1 means there should be a distractor, otherwise it is 0)). This file was generated manually. **If you generate your own experiment file, change this file accordingly.**
@@ -71,9 +71,9 @@ python scripts/run_code_evaluation.py --game-folder results/run/revised_games/ -
 ## Visualize Results
 
 ```bash
-python scripts/make_table2.py --results results/run/results.json
-python scripts/make_table3.py --results results/run/results.json
-python scripts/make_figure4.py --results results/run/results.json
+python scripts/make_table2.py --results results/gpt-4o/results.json
+python scripts/make_table3.py --results results/gpt-4o/results.json
+python scripts/make_figure4.py --results results/gpt-4o/results.json
 ```
 
 # Citing ByteSized32
