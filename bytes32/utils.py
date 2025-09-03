@@ -14,13 +14,13 @@ import tiktoken
 
 from tqdm import tqdm
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-import trapi
+from bytes32.trapi import get_llm_client
 
 
 # client = openai.AzureOpenAI() if openai.api_type == "azure" else openai.OpenAI()
 # client = OpenAI(api_key="x", base_url="https://api.deepseek.com")
 # client = OpenAI(api_key="x")
-client, _ = trapi.get_llm_client()
+client, _ = get_llm_client()
 
 
 if sys.version_info >= (3, 12):
