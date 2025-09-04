@@ -7,18 +7,21 @@ from requests.exceptions import ChunkedEncodingError
 
 import openai
 
-from openai import OpenAI
+# from openai import OpenAI
 
 
 import tiktoken
 
 from tqdm import tqdm
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from bytes32.trapi import get_llm_client
 
 
 # client = openai.AzureOpenAI() if openai.api_type == "azure" else openai.OpenAI()
-# client = OpenAI(api_key="X", base_url="https://api.deepseek.com")
-client = OpenAI(api_key="X")
+# client = OpenAI(api_key="x", base_url="https://api.deepseek.com")
+# client = OpenAI(api_key="x")
+# Removed global client initialization - now created per request with model parameter
+
 
 if sys.version_info >= (3, 12):
     from itertools import batched
@@ -34,6 +37,12 @@ else:
 
         if batch:
             yield batch
+
+
+# Cache LLM client per model to avoid recreating it on every call
+@lru_cache(maxsize=None)
+def _get_cached_client(model: str):
+    return get_llm_client(model)
 
 
 @lru_cache()
@@ -90,8 +99,21 @@ def call_gpt(model, stream=False, **kwargs):
     kwargs["timeout"] = 4*10*60  # 40 minutes
     kwargs["model"] = model
     kwargs["stream"] = stream
-    # kwargs["n"] = 1  # 不使用deepseek r1可以关掉，deepseek不支持多个输出
 
+    # Get cached client for the specific model
+    client, deployment_name = _get_cached_client(model)
+
+    kwargs["model"] = deployment_name
+
+    # 从 kwargs 提取 n，默认 1
+    n = kwargs.get("n", 1)
+
+    # 判断模型是否支持 n>1
+    if n != 1:
+        print(f"[Warning] Model '{model}' only supports n=1. Resetting.")
+        kwargs["n"] = 1  # ✅ 强制重设为 1
+    else:
+        kwargs["n"] = n
 
     try:
         response = client.chat.completions.create(**kwargs)
