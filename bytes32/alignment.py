@@ -278,65 +278,15 @@ def check_alignment(game_file, args):
     if num_samples_added < args.num_samples_per_game:
         sampled_paths.extend(random.sample(all_paths, min(args.num_samples_per_game - num_samples_added, len(all_paths))))
 
-    # def _parse_response(response):
-    #     data = []
-    #     for json_data in response.split("\n"):
-    #         if json_data.strip() == "":
-    #             continue  # Skip empty lines
-    #
-    #         data.append(json.loads(json_data))
-    #     return data
-    import json
-    import re
-
     def _parse_response(response):
         data = []
+        for json_data in response.split("\n"):
+            if json_data.strip() == "":
+                continue  # Skip empty lines
 
-        def try_markdown_block(lines):
-            item = {}
-            for line in lines:
-                # 提取动作名称，例如：1. `use thermometer on fridge`:
-                if match := re.match(r"^\d+\.\s+`(.+?)`:", line):
-                    item["action"] = match.group(1)
-                # 提取物理合理性
-                elif "Physically accurate?" in line:
-                    item["physically_accurate"] = "yes" in line.lower()
-                # 提取有效性
-                elif "→ Valid" in line:
-                    item["valid"] = True
-                elif "→ Automatically invalid" in line:
-                    item["valid"] = False
-            return item if "action" in item else None
-
-        lines = response.strip().split("\n")
-        buffer = []
-
-        for idx, line in enumerate(lines):
-            stripped = line.strip()
-            if not stripped:
-                continue
-
-            # 尝试逐行 JSON 解析
-            parsed_json = json.loads(stripped)
-            if parsed_json:
-                data.append(parsed_json)
-                continue
-
-            # 累积 Markdown 风格 block
-            if re.match(r"^\d+\.\s+`.+?`:", stripped):
-                if buffer:
-                    parsed_md = try_markdown_block(buffer)
-                    if parsed_md:
-                        data.append(parsed_md)
-                    buffer = []
-            buffer.append(stripped)
-
-        # 处理最后一个 Markdown block
-        if buffer:
-            parsed_md = try_markdown_block(buffer)
-            if parsed_md:
-                data.append(parsed_md)
+            data.append(json.loads(json_data))
         return data
+
 
     evaluations = []
     pbar = iter(tqdm(sampled_paths, desc="Querying OpenAI API", total=len(sampled_paths), leave=False))
