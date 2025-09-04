@@ -87,7 +87,8 @@ def check_compliance(gamefile, args):
 
     print(colored(f"  Response time: {time.time() - start} secs.", "yellow"))
     print(colored(f"  Responded with {sum(count_tokens(response) for response in responses)} tokens.", "yellow"))
-    majority_vote = sum(response.lower().startswith('yes') for response in responses) / args.compliance_majority_vote
+    # majority_vote = sum(response.lower().startswith('yes') for response in responses) / args.compliance_majority_vote
+    majority_vote = sum("yes" in response.lower() for response in responses) / args.compliance_majority_vote
     print(colored(f"Majority vote: {majority_vote:.1%}", "green"))
     results["response_msg"] = "\n".join(responses)
     results["passed"] = majority_vote > 0.5
