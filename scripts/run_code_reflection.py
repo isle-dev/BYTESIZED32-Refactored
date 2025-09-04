@@ -154,7 +154,9 @@ def reflect(gamefile, metrics, args):
         prompt_ += "```\n"
         prompt_ += "Based on this transcript, identify the problems and fix the code accordingly.\n"
     else:
-        raise NotImplementedError()
+        # No reflection criteria met - skip this game
+        print(colored(f"No reflection criteria met for this game. Skipping reflection.", "yellow"))
+        return None, "", ""
 
     print(colored(prompt_, "cyan"))
     prompt += prompt_
@@ -213,6 +215,9 @@ def perform_code_reflection(source, args):
             break
 
         reflection_game, reflection_prompt, reflection_response = reflect(gamefile, metrics, args)
+        if reflection_game is None:
+            # No reflection criteria met, skip this iteration
+            break
         gamefile = pjoin(args.revision_folder, f"{game_name}_v{i+1}.py")
         with open(gamefile, 'w') as f:
             f.write(reflection_game)
