@@ -118,6 +118,34 @@ def call_gpt(model, stream=False, **kwargs):
         retry_if_exception_type(openai.Timeout)
     ),
 )
+def call_gpt(model, stream=False, **kwargs):
+    kwargs["temperature"] = 0.0
+    kwargs["top_p"] = 1
+    kwargs["frequency_penalty"] = 0.0
+    kwargs["presence_penalty"] = 0.0
+    kwargs["timeout"] = 4*10*60  # 40 minutes
+    kwargs["model"] = model
+    kwargs["stream"] = stream
+    # kwargs["n"] = 1  # 不使用deepseek r1可以关掉，deepseek不支持多个输出
+
+
+    try:
+        response = client.chat.completions.create(**kwargs)
+    except Exception as e:
+        print(e)
+        raise e
+
+    return response
+
+
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(1000),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry=(
+        retry_if_exception_type(openai.Timeout)
+    ),
+)
 def llm_gpt(prompt, model="gpt-3.5-turbo", n=1, **kwargs):
     response = call_gpt(model=model, messages=[{"role": "user", "content": prompt}], n=n, **kwargs)
 
