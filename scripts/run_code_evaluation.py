@@ -86,7 +86,7 @@ def parse_args():
     alignment_group.add_argument("--max-depth", type=int, default=2)
     alignment_group.add_argument("--max-paths", type=int, default=25000)
     alignment_group.add_argument("--error-strategy", type=str, default="fail")
-    alignment_group.add_argument("--num-samples-per-game", type=int, default=1)
+    alignment_group.add_argument("--num-samples-per-game", type=int, default=100)
     alignment_group.add_argument("--sample-strategy", type=str, default="action_even")
     alignment_group.add_argument("--alignment-batch-size", type=int, default=1)
 
