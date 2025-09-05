@@ -230,7 +230,7 @@ def parse_args():
     group.add_argument("--games", nargs="+")
     parser.add_argument("--data", type=str, default="./data/")
 
-    parser.add_argument("--results-file", default="results/deepseek-reasoner/results.json")
+    parser.add_argument("--results-file", default="results.json")
     parser.add_argument("--revision-folder", default="revised_games/",
                         help="Where to save the revised games. Default: %(default)s")
     parser.add_argument("--final-folder", default="final_games/",
