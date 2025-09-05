@@ -99,8 +99,16 @@ def call_gpt(model, stream=False, **kwargs):
     kwargs["timeout"] = 4*10*60  # 40 minutes
     kwargs["model"] = model
     kwargs["stream"] = stream
-    # kwargs["n"] = 1  # 不使用deepseek r1可以关掉，deepseek不支持多个输出
-   
+
+    # Get cached client for the specific model
+    client, deployment_name = _get_cached_client(model)
+    kwargs["model"] = deployment_name
+
+    try:
+        response = client.chat.completions.create(**kwargs)
+    except Exception as e:
+        print(e)
+        raise e
 
     return response
 
