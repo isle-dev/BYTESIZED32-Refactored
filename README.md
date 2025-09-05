@@ -57,7 +57,7 @@ The provided codebase can run automatic evaluation on the generated games. The e
 - **Game Winnability**: whether the generated game is winnable, i.e. there exists a sequence of actions that lead to a winning state.
 
 ```bash
-python scripts/run_code_evaluation.py --game-folder results/run/revised_games/ --results-file results/run/results.json
+python scripts/run_code_evaluation.py --game-folder results/run/generated_games/ --results-file results/run/results.json
 ```
 
 ### Perform Code Reflection
