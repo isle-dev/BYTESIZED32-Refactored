@@ -1,4 +1,4 @@
-# BYTESIZED32
+[# BYTESIZED32
 Byte-sized text games for code generation tasks on virtual environments.
 
 ## Quickstart
@@ -91,3 +91,4 @@ If you use our codebase, please consider citing our paper:
   url={https://api.semanticscholar.org/CorpusID:258865971}
 }
 ```
+](https://github.com/isle-dev/BYTESIZED32-Refactored/tree/main)
