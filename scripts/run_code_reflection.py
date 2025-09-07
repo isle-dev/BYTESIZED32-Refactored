@@ -62,7 +62,7 @@ def automatic_evaluation(gamefile, args):
     # Run GPT evaluation for alignment.
     if args.reflect_alignment:
         metrics["alignment"] = check_alignment(gamefile, args)
-        if not metrics["alignment"]["error_msg"]:
+        if not metrics["alignment"]["aligned"]:
             return metrics
 
     # Run GPT agent for winnability.
@@ -129,10 +129,10 @@ def reflect(gamefile, metrics, args):
         prompt_ += metrics["compliance"]["response_msg"]
         prompt_ += "```\n"
         prompt_ += "Based on this comments, identify the problems and fix the code accordingly.\n"
-    elif args.reflect_alignment and not metrics["alignment"]["error_msg"]:
+    elif args.reflect_alignment and not metrics["alignment"]["aligned"] and metrics["alignment"]["response_msg"]:
         prompt_ = f"While there were no errors from the Python interpretor, the game does not correctly model the physical world. Here's the evaluation comments of the game:\n"
         prompt_ += "```"
-        prompt_ += metrics["alignment"]["error_msg"]
+        prompt_ += metrics["alignment"]["response_msg"]
         prompt_ += "```\n"
         prompt_ += "Based on this comments, identify the problems and fix the code accordingly.\n"
     elif args.reflect_winnability and metrics["winnability"]["gpt_bug"]:
@@ -213,7 +213,6 @@ def perform_code_reflection(source, args):
             break
 
         reflection_game, reflection_prompt, reflection_response = reflect(gamefile, metrics, args)
-
         gamefile = pjoin(args.revision_folder, f"{game_name}_v{i+1}.py")
         with open(gamefile, 'w') as f:
             f.write(reflection_game)
@@ -228,7 +227,6 @@ def parse_args():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--game-folder")
     group.add_argument("--games", nargs="+")
-    parser.add_argument("--data", type=str, default="./data/")
 
     parser.add_argument("--results-file", default="results.json")
     parser.add_argument("--revision-folder", default="revised_games/",
@@ -236,7 +234,7 @@ def parse_args():
     parser.add_argument("--final-folder", default="final_games/",
                         help="Where to save the final revised games. Default: %(default)s")
 
-    parser.add_argument("--reflect-model-name", default="gpt-4o-mini")
+    parser.add_argument("--reflect-model-name", default="gpt-4-32k")
     parser.add_argument("--max-reflection-steps", type=int, default=3)
     parser.add_argument("--strip-comments", action="store_true",
                         help="Remove Python comments from generated_game to save context space.")
@@ -256,23 +254,21 @@ def parse_args():
     validity_group.add_argument("--max-num-actions", type=int, default=100)
 
     compliance_group = parser.add_argument_group("Specification Compliance")
-    compliance_group.add_argument("--compliance-model-name", default="gpt-4o-mini")
+    compliance_group.add_argument("--compliance-model-name", default="gpt-4")
     compliance_group.add_argument("--evaluation-form", type=str, default="data/test_eval.csv")
     compliance_group.add_argument("--test-prompt-input-folder", type=str, default="data/test_prompts")
-    compliance_group.add_argument("--compliance-majority-vote", type=int, default=31)
 
     alignment_group = parser.add_argument_group("Physical Reality Alignment")
-    alignment_group.add_argument("--alignment-model-name", default="gpt-4o-mini")
+    alignment_group.add_argument("--alignment-model-name", default="gpt-4")
     alignment_group.add_argument("--shuffle-random-seed", type=int, default=0)
     alignment_group.add_argument("--max-depth", type=int, default=2)
     alignment_group.add_argument("--max-paths", type=int, default=25000)
     alignment_group.add_argument("--error-strategy", type=str, default="fail")
     alignment_group.add_argument("--num-samples-per-game", type=int, default=100)
     alignment_group.add_argument("--sample-strategy", type=str, default="action_even")
-    alignment_group.add_argument("--alignment-batch-size", type=int, default=1)
 
     winnability_group = parser.add_argument_group("Game Winnability")
-    winnability_group.add_argument("--agent-model-name", default="gpt-4o-mini")
+    winnability_group.add_argument("--agent-model-name", default="gpt-4")
     winnability_group.add_argument("--env-step-limit", type=int, default=30)
     winnability_group.add_argument("--game-random-seed", type=int, default=20230614)
 
