@@ -78,7 +78,7 @@ python scripts/run_code_reflection.py \
   --results-file results/run/reflection_results.json \
   --revision-folder results/run/final_games
 ```
-Optional: add these flags to also self-reflect on other dimensions
+**Optional(TBD): add these flags to also self-reflect on other dimensions**
 
 --reflect-alignment   → fix issues related to goal/task alignment
 
