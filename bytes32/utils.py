@@ -106,6 +106,9 @@ def call_gpt(model, stream=False, **kwargs):
     if "gpt-5" in deployment_name:
         # 'max_tokens' is not supported with gpt-5. Use 'max_completion_tokens' instead.
         kwargs["max_completion_tokens"] = kwargs.pop("max_tokens", None)
+        # temperature and top_p are not supported.
+        kwargs.pop("temperature", None)
+        kwargs.pop("top_p", None)
 
     try:
         response = client.chat.completions.create(**kwargs)
