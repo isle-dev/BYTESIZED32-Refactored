@@ -44,8 +44,11 @@ Running the three commands above will give you `experiment_action.csv`, `experim
 With the generated csv files, we can now run the code generation for each experiment.
 ```bash
 python scripts/run_code_generation.py data/experiment_action.csv --output-folder results/run/
+python scripts/run_code_generation_old.py data/experiment_action.csv --output-folder results/run_old/
 python scripts/run_code_generation.py data/experiment_distractor.csv --output-folder results/run/
+python scripts/run_code_generation_old.py data/experiment_distractor.csv --output-folder results/run_old/
 python scripts/run_code_generation.py data/experiment_object.csv --output-folder results/run/
+python scripts/run_code_generation_old.py data/experiment_object.csv --output-folder results/run_old/
 ```
 Each command will generate 32 games according to the experiment file. By default, the generated games along with the raw LLM prompts and responses are saved in `results/{datetime}/generated_games/` folder. See `run_code_generation.py --help` for all additional arguments.
 
