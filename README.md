@@ -49,6 +49,12 @@ python scripts/run_code_generation.py data/experiment_object.csv --output-folder
 ```
 Each command will generate 32 games according to the experiment file. By default, the generated games along with the raw LLM prompts and responses are saved in `results/{datetime}/generated_games/` folder. See `run_code_generation.py --help` for all additional arguments.
 
+### Perform Code Reflection
+Some of the generated games may not be valid Python code. We use the following script to perform self-reflection and improve code according to technical validity.
+```bash
+python scripts/run_code_reflection.py --game-folder results/run/generated_games/ --revision-folder results/run/revised_games/
+```
+
 ## Run Automatic Evaluation
 The provided codebase can run automatic evaluation on the generated games. The evaluation is based on the following metrics:
 - **Technical Validity**: whether the generated game is valid Python code and contains expected class and methods.
@@ -57,43 +63,10 @@ The provided codebase can run automatic evaluation on the generated games. The e
 - **Game Winnability**: whether the generated game is winnable, i.e. there exists a sequence of actions that lead to a winning state.
 
 ```bash
-python scripts/run_code_evaluation.py --game-folder results/run/generated_games/ --results-file results/run/results.json
+python scripts/run_code_evaluation.py --game-folder results/run/revised_games/ --results-file results/run/results.json
 ```
-The initial evaluation results are often unsatisfactory, as many generated games fail 
-to meet the required criteria. To improve these outcomes, we introduce a 
-**self-reflection mechanism**.  
 
-This mechanism takes the error messages and feedback from the automatic evaluation step 
-and uses them to revise the generated code. In this way, reflection directly addresses 
-the detected issues and helps the games achieve better performance upon re-evaluation.
-
-### Perform Code Reflection
-Some of the generated games may not be valid Python code.  
-We use the following script to perform self-reflection and improve code according to **technical validity**:
-
-```bash
-python scripts/run_code_reflection.py \
-  --game-folder results/run/generated_games/ \
-  --revision-folder results/run/revised_games/ \
-  --results-file results/run/reflection_results.json \
-  --revision-folder results/run/final_games
-```
-Optional: add these flags to also self-reflect on other dimensions
-
---reflect-alignment   → fix issues related to goal/task alignment
-
---reflect-compliance  → fix issues related to code compliance with the framework
-
---reflect-winnability → fix issues affecting game solvability
-```bash
-python scripts/run_code_reflection.py \
-  --game-folder results/run/generated_games/ \
-  --revision-folder results/run/revised_games/ \
-  --results-file results/run/reflection_results.json \
-  --revision-folder results/run/final_games \
-  --reflect-alignment --reflect-compliance --reflect-winnability
-
-```
+**Note**: The Specification Compliance evaluation depends on `data/test_eval.csv` which stores all the labels (i.e. actions and objects that we are interested in and that should be included in the generated game, as well as whether the generated game should contain distractors (1 means there should be a distractor, otherwise it is 0)). This file was generated manually. **If you generate your own experiment file, change this file accordingly.**
 
 
 **Note**: The Specification Compliance evaluation depends on `data/test_eval.csv` which stores all the labels (i.e. actions and objects that we are interested in and that should be included in the generated game, as well as whether the generated game should contain distractors (1 means there should be a distractor, otherwise it is 0)). This file was generated manually. **If you generate your own experiment file, change this file accordingly.**
