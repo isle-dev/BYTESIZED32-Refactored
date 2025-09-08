@@ -257,6 +257,7 @@ def parse_args():
     compliance_group.add_argument("--compliance-model-name", default="gpt-4")
     compliance_group.add_argument("--evaluation-form", type=str, default="data/test_eval.csv")
     compliance_group.add_argument("--test-prompt-input-folder", type=str, default="data/test_prompts")
+    compliance_group.add_argument("--compliance-majority-vote", type=int, default=31)
 
     alignment_group = parser.add_argument_group("Physical Reality Alignment")
     alignment_group.add_argument("--alignment-model-name", default="gpt-4")
@@ -266,6 +267,7 @@ def parse_args():
     alignment_group.add_argument("--error-strategy", type=str, default="fail")
     alignment_group.add_argument("--num-samples-per-game", type=int, default=100)
     alignment_group.add_argument("--sample-strategy", type=str, default="action_even")
+    alignment_group.add_argument("--alignment-batch-size", type=int, default=1)
 
     winnability_group = parser.add_argument_group("Game Winnability")
     winnability_group.add_argument("--agent-model-name", default="gpt-4")
