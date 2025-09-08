@@ -40,48 +40,6 @@ The above script makes use of train and test csv files found in the `data/` fold
 
 Running the three commands above will give you `experiment_action.csv`, `experiment_distractor.csv`, and `experiment_object.csv`. Since sampling is used in `generate_experiment_file.py`, we offer our generated csv files to reproduce the results (they can be found in `data/`). The left column of the output csv file is the game name of a similar game (i.e. a prompt game that shares a same action/distractor/object with the test game) and the right column is the name of an unsimilar game.
 
-# BYTESIZED32
-Byte-sized text games for code generation tasks on virtual environments.
-
-## Quickstart
-Clone the repository:
-```bash
-git clone https://github.com/isle-dev/BYTESIZED32-Refactored.git
-cd BYTESIZED32
-```
-
-Install Dependencies:
-```bash
-conda create --name bytesized32 python=3.10
-conda activate bytesized32
-pip install -e .
-```
-
-### API key
-Set the API key in `byte32/utils`
-```bash
-# OpenAI
-client = OpenAI(api_key="xxx")
-# Deepseek
-client = OpenAI(api_key="xxx", base_url="https://api.deepseek.com/v1")
-# Groq
-client = OpenAI(api_key="xxx", base_url="https://api.groq.com/openai/v1")
-```
-
-## Run Generation
-We run three ablation experiments, namely *object*, *action*, *distractor*.
-
-### Prompt Game Selection
-First, we generate three csv files, one for each experiment. Those files contain information about which games to use as in-context example for the code generation.
-```bash
-python scripts/generate_experiment_file.py action
-python scripts/generate_experiment_file.py distractor
-python scripts/generate_experiment_file.py object
-```
-The above script makes use of train and test csv files found in the `data/` folder. They describe what actions/distractors/objects are found in each game. In `action_train.csv`, `distractor_train.csv`, `object_train.csv`, 1 refers to there exists such an action/distractor/object, and empty entries refers to there does not exist such an action/distractor/object. In `action_test.csv`, the second column is one action (human-generated) that we will find a similar prompt game with the same action. In `distractor_test.csv`, 1 means this test needs a distractor and 0 means it does not need a distractor. In `object_test.csv`, 2 means we will find a prompt with this object for similarity, 1 means this kind of object is also needed for this test and empty entries means this object may not be required.
-
-Running the three commands above will give you `experiment_action.csv`, `experiment_distractor.csv`, and `experiment_object.csv`. Since sampling is used in `generate_experiment_file.py`, we offer our generated csv files to reproduce the results (they can be found in `data/`). The left column of the output csv file is the game name of a similar game (i.e. a prompt game that shares a same action/distractor/object with the test game) and the right column is the name of an unsimilar game.
-
 ### Code Generation
 With the generated csv files, we can now run the code generation for each experiment.
 ```bash
@@ -135,6 +93,3 @@ If you use our codebase, please consider citing our paper:
   url={https://api.semanticscholar.org/CorpusID:258865971}
 }
 ```
-
-
-
