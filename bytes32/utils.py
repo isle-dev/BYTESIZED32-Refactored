@@ -103,6 +103,9 @@ def call_gpt(model, stream=False, **kwargs):
     # Get cached client for the specific model
     client, deployment_name = _get_cached_client(model)
     kwargs["model"] = deployment_name
+    if "gpt-5" in deployment_name:
+        # 'max_tokens' is not supported with gpt-5. Use 'max_completion_tokens' instead.
+        kwargs["max_completion_tokens"] = kwargs.pop("max_tokens", None)
 
     try:
         response = client.chat.completions.create(**kwargs)
