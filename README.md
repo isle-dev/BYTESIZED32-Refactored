@@ -68,9 +68,6 @@ python scripts/run_code_evaluation.py --game-folder results/run/revised_games/ -
 
 **Note**: The Specification Compliance evaluation depends on `data/test_eval.csv` which stores all the labels (i.e. actions and objects that we are interested in and that should be included in the generated game, as well as whether the generated game should contain distractors (1 means there should be a distractor, otherwise it is 0)). This file was generated manually. **If you generate your own experiment file, change this file accordingly.**
 
-
-**Note**: The Specification Compliance evaluation depends on `data/test_eval.csv` which stores all the labels (i.e. actions and objects that we are interested in and that should be included in the generated game, as well as whether the generated game should contain distractors (1 means there should be a distractor, otherwise it is 0)). This file was generated manually. **If you generate your own experiment file, change this file accordingly.**
-
 ## Visualize Results
 
 ```bash
