@@ -99,107 +99,114 @@ def check_validity(gamefile, args):
 
     timedOut = True
     timeoutDuration = 15 * 60  # 15 minutes
-    with timeout(timeoutDuration):
-        try:
-            if os.path.dirname(gamefile) not in sys.path:
-                sys.path.append(os.path.dirname(gamefile))
+    try:
+        with timeout(timeoutDuration):
+            try:
+                if os.path.dirname(gamefile) not in sys.path:
+                    sys.path.append(os.path.dirname(gamefile))
 
-            # TextGame = importlib.import_module(os.path.basename(gamefile)[:-3]).TextGame
-            TextGame = next(obj for name, obj in
-                            inspect.getmembers(importlib.import_module(os.path.basename(gamefile)[:-3]),
-                                               inspect.isclass) if
-                            obj.__module__ == os.path.basename(gamefile)[:-3] and name.endswith('Game'))
-            print(gamefile)
-        except Exception as e:
-            print(e)
-            checks["error_msg"] = str(e)
-            return checks
-
-        try:
-            game = TextGame(randomSeed=args.random_seed)
-            checks['TextGame'] = True
-            print("-> Successfully initialized the game.")
-        except Exception as e:
-            print(e)
-            checks["error_msg"] = str(e)
-            return checks
-
-        try:
-            task_desc = game.getTaskDescription()
-            checks["getTaskDescription"] = True
-            print(f"-> Task Description: {task_desc}")
-        except Exception as e:
-            print(e)
-            checks["error_msg"] = str(e)
-            return checks
-
-        try:
-            game.calculateScore()
-            checks["calculateScore"] = True
-            print("-> calculateScore() is implemented.")
-        except Exception as e:
-            print(e)
-            checks["error_msg"] = str(e)
-            return checks
-
-        try:
-            possible_actions = game.generatePossibleActions()
-            num_first_step_possible_actions = len(possible_actions)
-            checks["num_valid_actions"] = num_first_step_possible_actions
-            checks["generatePossibleActions"] = True
-            print("-> generatePossibleActions() is implemented.")
-        except Exception as e:
-            print(e)
-            checks["error_msg"] = str(e)
-            return checks
-
-        # DFS search
-        action_stack = []
-
-        # truncate possible actions if the num of possible actions is too large
-        possible_actions = sample_actions(possible_actions, args.max_num_actions, args.random_seed)
-        for action in possible_actions:
-            action_stack.append([action])
-
-        while len(action_stack) > 0:
-            action_seq = action_stack.pop()
-            # print(action_seq)
-            game = TextGame(randomSeed=args.random_seed)
-            game.generatePossibleActions()
-            for action in action_seq:
-                try:
-                    game.step(action)
-                    checks["step"] = True
-                except Exception as e:
-                    stacktrace = [frame.replace(os.getcwd(), "").strip() for frame in
-                                  traceback.format_tb(e.__traceback__) if gamefile in frame]
-                    checks["step"] = False
-                    checks["error_msg"] = "\n".join(stacktrace) + "\n" + str(e)
-                    return checks
+                # TextGame = importlib.import_module(os.path.basename(gamefile)[:-3]).TextGame
+                TextGame = next(obj for name, obj in
+                                inspect.getmembers(importlib.import_module(os.path.basename(gamefile)[:-3]),
+                                                   inspect.isclass) if
+                                obj.__module__ == os.path.basename(gamefile)[:-3] and name.endswith('Game'))
+                print(gamefile)
+            except Exception as e:
+                print(e)
+                checks["error_msg"] = str(e)
+                return checks
 
             try:
-                if not game.gameOver:
-                    if len(action_seq) < args.max_steps:
-                        try:
-                            possible_actions = game.generatePossibleActions()
-                        except Exception as e:
-                            stacktrace = [frame.replace(os.getcwd(), "").strip() for frame in
-                                          traceback.format_tb(e.__traceback__) if gamefile in frame]
-                            checks["generatePossibleActions"] = False
-                            checks["error_msg"] = "\n".join(stacktrace) + "\n" + str(e)
-                            return checks
-
-                        # truncate possible actions if the num of possible actions is too large
-                        possible_actions = sample_actions(possible_actions, args.max_num_actions // 10,
-                                                          args.random_seed)
-                        for possible_action in possible_actions:
-                            action_stack.append(action_seq + [possible_action])
-
-                elif game.gameWon:
-                    checks['winnable'] = True
-            except:
+                game = TextGame(randomSeed=args.random_seed)
+                checks['TextGame'] = True
+                print("-> Successfully initialized the game.")
+            except Exception as e:
+                print(e)
+                checks["error_msg"] = str(e)
                 return checks
-        timedOut = False
+
+            try:
+                task_desc = game.getTaskDescription()
+                checks["getTaskDescription"] = True
+                print(f"-> Task Description: {task_desc}")
+            except Exception as e:
+                print(e)
+                checks["error_msg"] = str(e)
+                return checks
+
+            try:
+                game.calculateScore()
+                checks["calculateScore"] = True
+                print("-> calculateScore() is implemented.")
+            except Exception as e:
+                print(e)
+                checks["error_msg"] = str(e)
+                return checks
+
+            try:
+                possible_actions = game.generatePossibleActions()
+                num_first_step_possible_actions = len(possible_actions)
+                checks["num_valid_actions"] = num_first_step_possible_actions
+                checks["generatePossibleActions"] = True
+                print("-> generatePossibleActions() is implemented.")
+            except Exception as e:
+                print(e)
+                checks["error_msg"] = str(e)
+                return checks
+
+            # DFS search
+            action_stack = []
+
+            # truncate possible actions if the num of possible actions is too large
+            possible_actions = sample_actions(possible_actions, args.max_num_actions, args.random_seed)
+            for action in possible_actions:
+                action_stack.append([action])
+
+            while len(action_stack) > 0:
+                action_seq = action_stack.pop()
+                # print(action_seq)
+                game = TextGame(randomSeed=args.random_seed)
+                game.generatePossibleActions()
+                for action in action_seq:
+                    try:
+                        game.step(action)
+                        checks["step"] = True
+                    except Exception as e:
+                        stacktrace = [frame.replace(os.getcwd(), "").strip() for frame in
+                                      traceback.format_tb(e.__traceback__) if gamefile in frame]
+                        checks["step"] = False
+                        checks["error_msg"] = "\n".join(stacktrace) + "\n" + str(e)
+                        return checks
+
+                try:
+                    if not game.gameOver:
+                        if len(action_seq) < args.max_steps:
+                            try:
+                                possible_actions = game.generatePossibleActions()
+                            except Exception as e:
+                                stacktrace = [frame.replace(os.getcwd(), "").strip() for frame in
+                                              traceback.format_tb(e.__traceback__) if gamefile in frame]
+                                checks["generatePossibleActions"] = False
+                                checks["error_msg"] = "\n".join(stacktrace) + "\n" + str(e)
+                                return checks
+
+                            # truncate possible actions if the num of possible actions is too large
+                            possible_actions = sample_actions(possible_actions, args.max_num_actions // 10,
+                                                              args.random_seed)
+                            for possible_action in possible_actions:
+                                action_stack.append(action_seq + [possible_action])
+
+                    elif game.gameWon:
+                        checks['winnable'] = True
+                except:
+                    return checks
+            timedOut = False
+    except TimeoutException:
+        # Timeout occurred, but we want to handle it gracefully
+        print("Evaluation timed out after " + str(timeoutDuration) + " seconds.")
+        checks["error_msg"] = "Automatic evaluation timed out.  This could be due to an infinite loop in the code, waiting for user input outside the main() function, or some other issue or unusually-long-running procedure."
+        timeoutErrors.append(gamefile)
+        return checks
 
     # Check to see if the game timed out during evaluation
     if timedOut:
