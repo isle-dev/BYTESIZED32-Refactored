@@ -5,6 +5,8 @@ import time
 import shutil
 import argparse
 import traceback
+import signal
+from contextlib import contextmanager
 
 from glob import glob
 from os.path import join as pjoin
@@ -20,6 +22,29 @@ from bytes32 import check_compliance
 from bytes32 import check_alignment
 from bytes32 import check_validity
 from bytes32.utils import stream_llm_gpt, count_tokens, extract_python_code, get_empty_metrics
+
+
+class TimeoutError(Exception):
+    """Custom exception for timeout handling"""
+    pass
+
+
+@contextmanager
+def timeout_handler(seconds):
+    """Context manager for handling timeouts"""
+    def timeout_signal_handler(signum, frame):
+        raise TimeoutError(f"Operation timed out after {seconds} seconds")
+    
+    # Set the signal handler and alarm
+    old_handler = signal.signal(signal.SIGALRM, timeout_signal_handler)
+    signal.alarm(seconds)
+    
+    try:
+        yield
+    finally:
+        # Reset the alarm and handler
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 def automatic_evaluation(gamefile, args):
@@ -47,9 +72,17 @@ def automatic_evaluation(gamefile, args):
             metrics["validity"]["error_msg"] = "STOP: Code has 50% less lines than previous iteration."
             return metrics
 
-    # Run validity check.
+    # Run validity check with timeout
     print(colored("Running validity check...", "yellow"))
-    metrics["validity"] = check_validity(gamefile, args)
+    try:
+        with timeout_handler(args.validity_timeout):
+            metrics["validity"] = check_validity(gamefile, args)
+    except TimeoutError as e:
+        print(colored(f"Validity check timed out: {e}", "red"))
+        metrics["validity"]["error_msg"] = f"TIMEOUT: Validity check exceeded {args.validity_timeout} seconds. This likely indicates an infinite loop or extremely long-running operation."
+        metrics["validity"]["runnable"] = False
+        return metrics
+    
     if metrics["validity"]["error_msg"]:
         return metrics
 
@@ -204,28 +237,47 @@ def perform_code_reflection(source, args):
         gamefile = pjoin(args.revision_folder, f"{game_name}_v0.py")
         shutil.copyfile(source, gamefile)
 
-    metrics = automatic_evaluation(gamefile, args)
-    yield gamefile, {"metrics": metrics, "reflection_prompt": "", "reflection_response": ""}
+    # Add overall timeout for the entire reflection process per game
+    try:
+        with timeout_handler(args.game_timeout):
+            metrics = automatic_evaluation(gamefile, args)
+            yield gamefile, {"metrics": metrics, "reflection_prompt": "", "reflection_response": ""}
 
-    # Prompt GPT for code revision until automatic evaluation yields success or we reach max reflection steps.
-    for i in range(last_revision, args.max_reflection_steps):
-        if stop_reflection(metrics, args):
-            # The new code is the same as the old code, or has 50% less lines of code.
-            # The game has no error and is runnable, and the GPT agent has finished the game without reporting a bug.
-            break
+            # Prompt GPT for code revision until automatic evaluation yields success or we reach max reflection steps.
+            for i in range(last_revision, args.max_reflection_steps):
+                if stop_reflection(metrics, args):
+                    # The new code is the same as the old code, or has 50% less lines of code.
+                    # The game has no error and is runnable, and the GPT agent has finished the game without reporting a bug.
+                    break
 
-        reflection_game, reflection_prompt, reflection_response = reflect(gamefile, metrics, args)
+                reflection_game, reflection_prompt, reflection_response = reflect(gamefile, metrics, args)
 
-        if reflection_game is None:
-            # No reflection criteria met, skip this iteration
-            break
+                if reflection_game is None:
+                    # No reflection criteria met, skip this iteration
+                    break
 
-        gamefile = pjoin(args.revision_folder, f"{game_name}_v{i+1}.py")
-        with open(gamefile, 'w') as f:
-            f.write(reflection_game)
+                gamefile = pjoin(args.revision_folder, f"{game_name}_v{i+1}.py")
+                with open(gamefile, 'w') as f:
+                    f.write(reflection_game)
 
-        metrics = automatic_evaluation(gamefile, args)
-        yield gamefile, {"metrics": metrics, "reflection_prompt": reflection_prompt, "reflection_response": reflection_response}
+                metrics = automatic_evaluation(gamefile, args)
+                yield gamefile, {"metrics": metrics, "reflection_prompt": reflection_prompt, "reflection_response": reflection_response}
+    
+    except TimeoutError as e:
+        print(colored(f"Game reflection timed out for {game_name}: {e}", "red"))
+        # Return the original code as final output when reflection fails due to timeout
+        final_gamefile = pjoin(args.revision_folder, f"{game_name}_timeout_fallback.py")
+        shutil.copyfile(source, final_gamefile)
+        
+        timeout_metrics = get_empty_metrics()
+        timeout_metrics["validity"]["error_msg"] = f"TIMEOUT: Entire reflection process exceeded {args.game_timeout} seconds. Returning original code."
+        timeout_metrics["validity"]["runnable"] = False
+        
+        yield final_gamefile, {
+            "metrics": timeout_metrics, 
+            "reflection_prompt": "", 
+            "reflection_response": f"Process timed out after {args.game_timeout} seconds. Original code returned as fallback."
+        }
 
 
 def parse_args():
@@ -243,6 +295,10 @@ def parse_args():
 
     parser.add_argument("--reflect-model-name", default="gpt-4-32k")
     parser.add_argument("--max-reflection-steps", type=int, default=3)
+    parser.add_argument("--game-timeout", type=int, default=2700,
+                        help="Timeout in seconds for each game reflection process (default: 2700 = 45 minutes)")
+    parser.add_argument("--validity-timeout", type=int, default=1800,
+                        help="Timeout in seconds for validity check per iteration (default: 1800 = 30 minutes)")
     parser.add_argument("--strip-comments", action="store_true",
                         help="Remove Python comments from generated_game to save context space.")
     parser.add_argument("--reflect-with-reference-game", action="store_true",
@@ -304,24 +360,50 @@ def main():
         time.sleep(0.1)
         pbar.set_description(os.path.basename(gamefile))
 
-        latest_revision, revised_gamefile = find_latest_revision(gamefile, args)
-        if latest_revision >= args.max_reflection_steps:
-            continue
-
-        if os.path.basename(revised_gamefile) in reflection_results:
-            if stop_reflection(reflection_results[os.path.basename(revised_gamefile)]["metrics"], args):
-                # The new code is the same as the old code, or has 50% less lines of code.
-                # The game has no error and is runnable, and the GPT agent has finished the game without reporting a bug.
+        try:
+            latest_revision, revised_gamefile = find_latest_revision(gamefile, args)
+            if latest_revision >= args.max_reflection_steps:
                 continue
 
-        for revised_gamefile, stats in perform_code_reflection(gamefile, args):
-            reflection_results[os.path.basename(revised_gamefile)] = stats
+            if os.path.basename(revised_gamefile) in reflection_results:
+                if stop_reflection(reflection_results[os.path.basename(revised_gamefile)]["metrics"], args):
+                    # The new code is the same as the old code, or has 50% less lines of code.
+                    # The game has no error and is runnable, and the GPT agent has finished the game without reporting a bug.
+                    continue
+
+            for revised_gamefile, stats in perform_code_reflection(gamefile, args):
+                reflection_results[os.path.basename(revised_gamefile)] = stats
+                with open(args.results_file, 'w') as f:
+                    json.dump(reflection_results, f, indent=2)
+
+            # Copy the final revised game to a separate folder.
+            final_gamefile = pjoin(args.final_folder, os.path.basename(revised_gamefile).replace(".py", "_final.py"))
+            shutil.copyfile(revised_gamefile, final_gamefile)
+            
+        except Exception as e:
+            # Log the error and continue with the next game
+            print(colored(f"Error processing {os.path.basename(gamefile)}: {e}", "red"))
+            traceback.print_exc()
+            
+            # Record the error in results
+            game_name = os.path.basename(gamefile)[:-3]
+            error_gamefile = f"{game_name}_error.py"
+            reflection_results[error_gamefile] = {
+                "metrics": {
+                    "validity": {
+                        "error_msg": f"ERROR: Exception during processing: {str(e)}",
+                        "runnable": False
+                    }
+                },
+                "reflection_prompt": "",
+                "reflection_response": f"Processing failed with exception: {str(e)}"
+            }
+            
+            # Save results even when there's an error
             with open(args.results_file, 'w') as f:
                 json.dump(reflection_results, f, indent=2)
-
-        # Copy the final revised game to a separate folder.
-        final_gamefile = pjoin(args.final_folder, os.path.basename(revised_gamefile).replace(".py", "_final.py"))
-        shutil.copyfile(revised_gamefile, final_gamefile)
+                
+            continue
 
 
 if __name__ == "__main__":
