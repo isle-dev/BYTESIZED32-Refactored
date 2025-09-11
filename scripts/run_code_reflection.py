@@ -6,7 +6,9 @@ import shutil
 import argparse
 import traceback
 import signal
+import multiprocessing
 from contextlib import contextmanager
+from multiprocessing import Pool, Lock
 
 from glob import glob
 from os.path import join as pjoin
@@ -292,6 +294,8 @@ def parse_args():
                         help="Where to save the revised games. Default: %(default)s")
     parser.add_argument("--final-folder", default="final_games/",
                         help="Where to save the final revised games. Default: %(default)s")
+    parser.add_argument("--num-workers", type=int, default=1,
+                        help="Number of parallel worker processes. Default: %(default)s")
 
     parser.add_argument("--reflect-model-name", default="gpt-4-32k")
     parser.add_argument("--max-reflection-steps", type=int, default=3)
@@ -341,6 +345,126 @@ def parse_args():
     return args
 
 
+def process_single_game(gamefile_and_args):
+    """Process a single game file - designed to be used with multiprocessing"""
+    gamefile, args = gamefile_and_args
+    
+    try:
+        game_results = {}
+        
+        latest_revision, revised_gamefile = find_latest_revision(gamefile, args)
+        if latest_revision >= args.max_reflection_steps:
+            return None  # Skip this game
+        
+        # Check if already processed and completed
+        if os.path.exists(args.results_file):
+            try:
+                with open(args.results_file) as f:
+                    existing_results = json.load(f)
+                    if os.path.basename(revised_gamefile) in existing_results:
+                        if stop_reflection(existing_results[os.path.basename(revised_gamefile)]["metrics"], args):
+                            return None  # Skip this game
+            except (json.JSONDecodeError, IOError):
+                # If we can't read the file, proceed with processing
+                pass
+        
+        # Process the game
+        final_revised_gamefile = None
+        for revised_gamefile, stats in perform_code_reflection(gamefile, args):
+            game_results[os.path.basename(revised_gamefile)] = stats
+            final_revised_gamefile = revised_gamefile
+        
+        # Copy the final revised game to a separate folder
+        if final_revised_gamefile:
+            final_gamefile = pjoin(args.final_folder, os.path.basename(final_revised_gamefile).replace(".py", "_final.py"))
+            shutil.copyfile(final_revised_gamefile, final_gamefile)
+        
+        return game_results
+        
+    except Exception as e:
+        # Log the error and return error results
+        print(colored(f"Error processing {os.path.basename(gamefile)}: {e}", "red"))
+        traceback.print_exc()
+        
+        # Record the error in results
+        game_name = os.path.basename(gamefile)[:-3]
+        error_gamefile = f"{game_name}_error.py"
+        error_results = {
+            error_gamefile: {
+                "metrics": {
+                    "validity": {
+                        "error_msg": f"ERROR: Exception during processing: {str(e)}",
+                        "runnable": False
+                    }
+                },
+                "reflection_prompt": "",
+                "reflection_response": f"Processing failed with exception: {str(e)}"
+            }
+        }
+        
+        return error_results
+
+
+def update_results_file_safe(results_file, new_results):
+    """Safely update the results file with new results using file locking"""
+    if not new_results:
+        return
+    
+    # Use a lock file to prevent race conditions
+    lock_file = f"{results_file}.lock"
+    
+    # Simple file-based locking mechanism
+    max_wait_time = 30  # Maximum wait time in seconds
+    wait_time = 0
+    while os.path.exists(lock_file) and wait_time < max_wait_time:
+        time.sleep(0.1)
+        wait_time += 0.1
+    
+    # If we couldn't get the lock, try anyway but with a warning
+    if os.path.exists(lock_file):
+        print(colored(f"Warning: Couldn't acquire lock for {results_file}, proceeding anyway", "yellow"))
+    
+    try:
+        # Create lock
+        with open(lock_file, 'w') as f:
+            f.write(str(os.getpid()))
+        
+        # Read existing results
+        reflection_results = {}
+        if os.path.exists(results_file):
+            try:
+                with open(results_file) as f:
+                    reflection_results = json.load(f)
+            except (json.JSONDecodeError, IOError) as e:
+                print(colored(f"Warning: Could not read existing results file: {e}", "yellow"))
+                reflection_results = {}
+        
+        # Update with new results
+        reflection_results.update(new_results)
+        
+        # Write back to file atomically
+        temp_file = f"{results_file}.tmp"
+        with open(temp_file, 'w') as f:
+            json.dump(reflection_results, f, indent=2, sort_keys=True)
+        
+        # Atomic move (as atomic as possible on the filesystem)
+        shutil.move(temp_file, results_file)
+            
+    except Exception as e:
+        print(colored(f"Error updating results file: {e}", "red"))
+        # Clean up temp file if it exists
+        temp_file = f"{results_file}.tmp"
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+    finally:
+        # Remove lock
+        if os.path.exists(lock_file):
+            try:
+                os.remove(lock_file)
+            except OSError:
+                pass  # Lock file might have been removed by another process
+
+
 def main():
     args = parse_args()
 
@@ -355,56 +479,83 @@ def main():
             reflection_results = json.load(f)
 
     gamefiles = args.games or glob(pjoin(args.game_folder, "*.py"))
-    pbar = tqdm(sorted(gamefiles))
-    for gamefile in pbar:
-        time.sleep(0.1)
-        pbar.set_description(os.path.basename(gamefile))
+    
+    if args.num_workers == 1:
+        # Sequential processing (original behavior)
+        pbar = tqdm(sorted(gamefiles))
+        for gamefile in pbar:
+            time.sleep(0.1)
+            pbar.set_description(os.path.basename(gamefile))
 
-        try:
-            latest_revision, revised_gamefile = find_latest_revision(gamefile, args)
-            if latest_revision >= args.max_reflection_steps:
-                continue
-
-            if os.path.basename(revised_gamefile) in reflection_results:
-                if stop_reflection(reflection_results[os.path.basename(revised_gamefile)]["metrics"], args):
-                    # The new code is the same as the old code, or has 50% less lines of code.
-                    # The game has no error and is runnable, and the GPT agent has finished the game without reporting a bug.
+            try:
+                latest_revision, revised_gamefile = find_latest_revision(gamefile, args)
+                if latest_revision >= args.max_reflection_steps:
                     continue
 
-            for revised_gamefile, stats in perform_code_reflection(gamefile, args):
-                reflection_results[os.path.basename(revised_gamefile)] = stats
-                with open(args.results_file, 'w') as f:
-                    json.dump(reflection_results, f, indent=2)
+                if os.path.basename(revised_gamefile) in reflection_results:
+                    if stop_reflection(reflection_results[os.path.basename(revised_gamefile)]["metrics"], args):
+                        # The new code is the same as the old code, or has 50% less lines of code.
+                        # The game has no error and is runnable, and the GPT agent has finished the game without reporting a bug.
+                        continue
 
-            # Copy the final revised game to a separate folder.
-            final_gamefile = pjoin(args.final_folder, os.path.basename(revised_gamefile).replace(".py", "_final.py"))
-            shutil.copyfile(revised_gamefile, final_gamefile)
-            
-        except Exception as e:
-            # Log the error and continue with the next game
-            print(colored(f"Error processing {os.path.basename(gamefile)}: {e}", "red"))
-            traceback.print_exc()
-            
-            # Record the error in results
-            game_name = os.path.basename(gamefile)[:-3]
-            error_gamefile = f"{game_name}_error.py"
-            reflection_results[error_gamefile] = {
-                "metrics": {
-                    "validity": {
-                        "error_msg": f"ERROR: Exception during processing: {str(e)}",
-                        "runnable": False
-                    }
-                },
-                "reflection_prompt": "",
-                "reflection_response": f"Processing failed with exception: {str(e)}"
-            }
-            
-            # Save results even when there's an error
-            with open(args.results_file, 'w') as f:
-                json.dump(reflection_results, f, indent=2)
+                for revised_gamefile, stats in perform_code_reflection(gamefile, args):
+                    reflection_results[os.path.basename(revised_gamefile)] = stats
+                    with open(args.results_file, 'w') as f:
+                        json.dump(reflection_results, f, indent=2, sort_keys=True)
+
+                # Copy the final revised game to a separate folder.
+                final_gamefile = pjoin(args.final_folder, os.path.basename(revised_gamefile).replace(".py", "_final.py"))
+                shutil.copyfile(revised_gamefile, final_gamefile)
                 
-            continue
+            except Exception as e:
+                # Log the error and continue with the next game
+                print(colored(f"Error processing {os.path.basename(gamefile)}: {e}", "red"))
+                traceback.print_exc()
+                
+                # Record the error in results
+                game_name = os.path.basename(gamefile)[:-3]
+                error_gamefile = f"{game_name}_error.py"
+                reflection_results[error_gamefile] = {
+                    "metrics": {
+                        "validity": {
+                            "error_msg": f"ERROR: Exception during processing: {str(e)}",
+                            "runnable": False
+                        }
+                    },
+                    "reflection_prompt": "",
+                    "reflection_response": f"Processing failed with exception: {str(e)}"
+                }
+                
+                # Save results even when there's an error
+                with open(args.results_file, 'w') as f:
+                    json.dump(reflection_results, f, indent=2, sort_keys=True)
+                    
+                continue
+    else:
+        # Parallel processing
+        print(colored(f"Using {args.num_workers} worker processes for parallel processing", "green"))
+        
+        # Prepare arguments for each game (sorted to maintain deterministic order)
+        sorted_gamefiles = sorted(gamefiles)
+        game_args = [(gamefile, args) for gamefile in sorted_gamefiles]
+        
+        # Use multiprocessing Pool
+        with Pool(processes=args.num_workers) as pool:
+            # Use imap for progress tracking while preserving order
+            pbar = tqdm(total=len(game_args))
+            pbar.set_description("Processing games in parallel")
+            
+            # Process results in order to maintain deterministic output
+            for result in pool.imap(process_single_game, game_args):
+                pbar.update(1)
+                if result:
+                    # Update results file safely
+                    update_results_file_safe(args.results_file, result)
+            
+            pbar.close()
 
 
 if __name__ == "__main__":
+    # This is important for multiprocessing on Windows and some Unix systems
+    multiprocessing.set_start_method('spawn', force=True) if hasattr(multiprocessing, 'set_start_method') else None
     main()
